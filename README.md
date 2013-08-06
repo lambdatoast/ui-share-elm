@@ -10,3 +10,7 @@ index.html is an example file. The actual site uses a modified version to fit th
 
 NOTE: This is very alpha and will probably be changing radically, as share-elm.com is a fresh site with goals that are not set in stone.
 
+## Building
+
+The only thing that has to be built is the main.js that is imported by the app. To build that just run browserify on the src/main.js source file, i.e. `browserify js/src/main.js > js/main.js`.
+
