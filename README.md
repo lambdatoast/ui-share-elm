@@ -2,7 +2,9 @@
 
 Requires [node](http://nodejs.org/) and [browserify](https://github.com/substack/node-browserify) for building and testing the source files.
 
-Other requirements are [bean](https://npmjs.org/package/bean), [iris](https://npmjs.org/package/iris), [curry](https://npmjs.org/package/curry), and [underscore](https://npmjs.org/package/underscore) modules, all available through the node package manager.
+Other requirements are [bean](https://npmjs.org/package/bean), [iris](https://npmjs.org/package/iris), [curry](https://npmjs.org/package/curry), and [underscore](https://npmjs.org/package/underscore) modules, all available through the node package manager. 
+
+CodeMirror and other libs that are currently used are declared directly in the markup of index.html. 
 
 index.html is an example file. The actual site uses a modified version to fit the server-side template engine.
 
