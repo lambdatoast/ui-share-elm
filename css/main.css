@@ -1,0 +1,119 @@
+body {
+  color: #777;
+  font-family: 'Noto Sans', sans-serif;
+  padding-bottom: 35px;
+}
+h1, h2, h3 {
+  color: #bbb;
+  font-weight: normal;
+  text-align: center;
+}
+h1 {
+  color: #777;
+  font-weight: bold;
+}
+h1 small {
+  color: #aaa;
+  font-weight: normal;
+}
+.header {
+  border-bottom: 1px solid #f2f2f2;
+}
+.header a {
+  color: #777;
+  text-decoration: none;
+}
+.header h1 {
+  margin: .32em 0;
+}
+.header h2 {
+  margin: .25em 0;
+}
+.content {
+  padding: 0.5em; 
+}
+.pure-button-xsmall {
+  font-size: 70%;
+}
+
+.pure-button-small {
+  font-size: 85%;
+}
+
+.pure-button-large {
+  font-size: 110%;
+}
+
+.pure-button-xlarge {
+  font-size: 125%;
+}
+.pure-button-secondary {
+  background: rgb(66, 184, 221);
+  border-radius: 4px;
+  color: white;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+.primary h2 {
+  margin: .23em 0;
+}
+#editor input {
+  text-align: center;
+}
+#editor textarea {
+  font-family: Consolas, "Liberation Mono", Courier, monospace;
+  font-size: 12px;
+}
+#preview iframe,
+#editor textarea,
+#editor .CodeMirror {
+  font-size: 13px;
+  width: 98%;
+}
+#preview,
+#preview iframe,
+#editor textarea,
+#editor .CodeMirror {
+  height: 360px;
+}
+#preview iframe {
+  border: 1px solid #dfdfdf;
+}
+.actions a {
+  margin-top: 5px;
+}
+.actions .view {
+  display: none;
+}
+#save {
+  display: none;
+}
+.secondary {
+  border-top: 1px solid #efefef;
+}
+.secondary h2,
+.secondary h3,
+.secondary h4 {
+  color: #444;
+}
+.secondary .content {
+  color: #aaa;
+  font-size: 15px;
+}
+.secondary li a {
+  color: #4183c4;
+}
+footer,
+footer a {
+  color: #aaa;
+  font-size: 13px;
+}
+footer {
+  background: #f9f9f9;
+  border-top: 1px solid #dfdfdf;
+  bottom: 0;
+  height: 30px;
+  line-height: 28px;
+  position: fixed;
+  text-align: center;
+  width: 100%;
+}
