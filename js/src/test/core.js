@@ -8,14 +8,14 @@ var assert = require("assert")
 
 describe('Core', function(){
   describe('#sequence()', function(){
-    it('should create a computation pipeline that takes a stateSignal as first input', function(){
+    it('should create a computation pipeline', function(){
 
-      function mkDummyStateSignal() {
+      function mkState() {
         return "a"
       }
 
       var result = sequence(
-        mkDummyStateSignal,
+        mkState,
         function (state) { return mval(5, state) },
         function (val)   { return mval(rval(val) + 5, rstate(val) + "b") },
         function (val)   { return mval(rval(val) * 2, rstate(val) + "c") }
