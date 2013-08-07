@@ -424,17 +424,17 @@ function sourceAPI(io) {
   }
 }
 
-// AppState -> MVal[Promise]
+// AppState -> MVal[Promise,AppState]
 function compile(state) {
   return mval(http.post('/sprout', {body: state}), state);
 }
 
-// AppState -> Boolean
+// MVal[_,AppState] -> Boolean
 function sourceIsEmpty(app) {
   return rstate(app).sourcecode.replace(/\s+/g, '') == ""
 }
 
-// String -> AppState -> MVal[Promise]
+// String -> AppState -> MVal[Promise,AppState]
 var compileAs = curry(function (category, state) {
   return fval(compile(_.extend(state, {category: category})));
 })
@@ -466,7 +466,7 @@ function nextAppState(app) {
   return rval(app)()
 }
 
-// MVal[AppSignal,AppState] -> Computation[MVal[AppSignal]]
+// MVal[AppSignal,AppState] -> Computation[MVal[AppSignal,AppState]]
 function compilationSequence(app) {
   return sequence(
     nextAppState,
