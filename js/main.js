@@ -394,9 +394,8 @@ process.binding = function (name) {
 require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/editor.js",function(require,module,exports,__dirname,__filename,process,global){var _        = require('underscore')
 var curry    = require('curry')
 var http     = require('iris').http
-var ui_state = require('./ui.state')
-var query    = ui_state.query
-var history  = ui_state.history
+var ui       = require('./ui.state')
+var history  = ui.history
 var on       = require('./ui.event').on
 var core     = require('./core')
 var mval     = core.mval
@@ -405,37 +404,45 @@ var rval     = core.rval
 var rstate   = core.rstate
 var sequence = core.sequence
 
-// MODEL
+/* MODEL */
 
+// String -> String
 function editorPath(id) {
   return '/sprout/' + id
 }
 
+// String -> String
 function fullviewPath(id) {
   return editorPath(id) + '/view'
 }
 
-var sourceAPI = function (io) {
+// {getValue, setValue} -> {Source}
+function sourceAPI(io) {
   return { 
     asText: function () { return io.getValue() },
     update: function(v) { io.setValue(v) } 
   }
 }
 
+// AppState -> MVal[Promise,AppState]
 function compile(state) {
   return mval(http.post('/sprout', {body: state}), state);
 }
 
-function sourceIsEmpty(val) {
-  return rstate(val).sourcecode.replace(/\s+/g, '') == ""
+// MVal[_,AppState] -> Boolean
+function sourceIsEmpty(app) {
+  return rstate(app).sourcecode.replace(/\s+/g, '') == ""
 }
 
+// String -> AppState -> MVal[Promise,AppState]
 var compileAs = curry(function (category, state) {
   return fval(compile(_.extend(state, {category: category})));
 })
 
+// MVal[_,AppState] -> {StorableHistory}
 function rhistory(val) {
   var state = rstate(val)
+  // (can't just store AppState in DOM history because an object with functions breaks it)
   return {
     sourcecode: state.source.asText(), 
     preview:    state.ui.preview.asHTML(), 
@@ -443,8 +450,9 @@ function rhistory(val) {
   }
 }
 
-// UPDATE
+/* UPDATE */
 
+// String -> String -> MVal[AppSignal] -> MVal[AppSignal]
 var addCompilationHandler = curry(function (selector, category, app) {
   var newApp = mval(rval(app), _.extend(rstate(app), {category: category}))
   on('click', selector, function () { 
@@ -453,10 +461,12 @@ var addCompilationHandler = curry(function (selector, category, app) {
   return newApp
 })
 
+// MVal[AppSignal,AppState] -> AppState
 function nextAppState(app) {
   return rval(app)()
 }
 
+// MVal[AppSignal,AppState] -> Computation[MVal[AppSignal,AppState]]
 function compilationSequence(app) {
   return sequence(
     nextAppState,
@@ -467,6 +477,7 @@ function compilationSequence(app) {
   )
 }
 
+// MVal[_,AppState] -> DOMEvent -> ()
 var updateUIFromHistory = curry(function (val, event) {
   if (event.state) {
     rstate(val).source.update(event.state.sourcecode)
@@ -474,6 +485,7 @@ var updateUIFromHistory = curry(function (val, event) {
   }
 })
 
+// MVal[_,AppState] -> ()
 function initAutoUpdateSaveButton(app) {
   var state = rstate(app)
   var lastCheckedSource = state.source.asText()
@@ -486,8 +498,9 @@ function initAutoUpdateSaveButton(app) {
   }, 700)
 }
 
-// DISPLAY
+/* DISPLAY */
 
+// {Source} -> {UI}
 function mkStateSignal(sourceState, ui) {
   return function () {
     return { 
@@ -500,6 +513,7 @@ function mkStateSignal(sourceState, ui) {
   }
 }
 
+// MVal[Promise,AppState] -> MVal[Promise,AppState]
 function updatePreview(val) {
   rval(val)
     .ok(function (id) {
@@ -511,6 +525,7 @@ function updatePreview(val) {
   return val
 }
 
+// MVal[Promise,AppState] -> MVal[Promise,AppState]
 function updateUIControls(val) {
   rval(val)
     .ok(function (id) {
@@ -521,6 +536,7 @@ function updateUIControls(val) {
   return val
 }
 
+// MVal[Promise,AppState] -> MVal[Promise,AppState]
 function updateHistoryFromCompilation(val) {
   rval(val)
     .ok(function (id) {
@@ -529,6 +545,7 @@ function updateHistoryFromCompilation(val) {
   return val
 }
 
+// (MVal[_,AppState] -> ()) -> MVal[_,AppState]
 var addHistoryHandler = curry(function (fn, app) {
   window.onpopstate = fn(app)
   return app
@@ -540,8 +557,8 @@ module.exports = {
     // Initial State
 
     var appSignal = mkStateSignal(
-      sourceAPI(CodeMirror.fromTextArea(query("#sourcecode")[0], {theme: "solarized"})),
-      ui_state
+      sourceAPI(CodeMirror.fromTextArea(ui.query("#sourcecode")[0], {theme: "solarized"})),
+      ui
     )
     var initialState = appSignal()
     var app = mval(appSignal, initialState)
@@ -3155,6 +3172,12 @@ function rval(val) {
 
 function rstate(val) {
   return val.state
+}
+
+function fmap(fn) { 
+  return function (val) {
+    return mval(fn(rval(val)), rstate(val))
+  }
 }
 
 function sequence(/* action1, action2, ... */) {
