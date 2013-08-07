@@ -35,6 +35,12 @@ function rstate(val) {
   return val.state
 }
 
+function fmap(fn) { 
+  return function (val) {
+    return mval(fn(rval(val)), rstate(val))
+  }
+}
+
 function sequence(/* action1, action2, ... */) {
   var actions = [].slice.call(arguments)
   return function (val) {

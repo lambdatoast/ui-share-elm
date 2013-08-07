@@ -1,0 +1,4 @@
+#!/bin/bash
+browserify js/src/main.js > js/main.js
+git status
+
