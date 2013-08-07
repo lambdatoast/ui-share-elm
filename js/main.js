@@ -394,9 +394,8 @@ process.binding = function (name) {
 require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/editor.js",function(require,module,exports,__dirname,__filename,process,global){var _        = require('underscore')
 var curry    = require('curry')
 var http     = require('iris').http
-var ui_state = require('./ui.state')
-var query    = ui_state.query
-var history  = ui_state.history
+var ui       = require('./ui.state')
+var history  = ui.history
 var on       = require('./ui.event').on
 var core     = require('./core')
 var mval     = core.mval
@@ -540,8 +539,8 @@ module.exports = {
     // Initial State
 
     var appSignal = mkStateSignal(
-      sourceAPI(CodeMirror.fromTextArea(query("#sourcecode")[0], {theme: "solarized"})),
-      ui_state
+      sourceAPI(CodeMirror.fromTextArea(ui.query("#sourcecode")[0], {theme: "solarized"})),
+      ui
     )
     var initialState = appSignal()
     var app = mval(appSignal, initialState)
