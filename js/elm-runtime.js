@@ -1,427 +1,34 @@
 Elm = {}; Elm.Native = {}; Elm.Native.Graphics = {};
-Elm.Graphics = {}; ElmRuntime = {}; ElmRuntime.Render = {}
+Elm.Graphics = {}; ElmRuntime = {}; ElmRuntime.Render = {};
 
-Elm.Native.Utils = function(elm) {
+Elm.Native.Basics = function(elm) {
   'use strict';
+  if (elm.Native.Basics) return elm.Native.Basics;
 
-  elm.Native = elm.Native || {};
-  if (elm.Native.Utils) return elm.Native.Utils;
-
-  function eq(x,y) {
-    if (x === y) return true;
-    if (typeof x === "object") {
-      var c = 0;
-      for (var i in x) { ++c; if (!eq(x[i],y[i])) return false; }
-      return c === Object.keys(y).length;
-    }
-    if (typeof x === 'function') {
-      throw new Error('Equality error: general function equality is ' +
-      'undecidable, and therefore, unsupported');
-    }
-    return x === y;
-  }
-
-  var EQ = 0, LT = 1, GT = 2, ord = ['EQ','LT','GT'];
-  function compare(x,y) { return { ctor: ord[cmp(x,y)] } }
-  function cmp(x,y) {
-    var ord;
-    if (typeof x !== 'object') return x === y ? EQ : x < y ? LT : GT;
-
-    if (x.ctor === "Cons" || x.ctor === "Nil") {
-      while (true) {
-          if (x.ctor === "Nil" && y.ctor === "Nil") return EQ;
-          if (x.ctor !== y.ctor) return x.ctor === 'Nil' ? LT : GT;
-          ord = cmp(x._0, y._0);
-          if (ord !== EQ) return ord;
-          x = x._1;
-          y = y._1;
-      }
-    }
-
-    if (x.ctor.slice(0,5) === 'Tuple') {
-      var n = x.ctor.slice(5) - 0;
-      var err = 'cannot compare tuples with more than 6 elements.';
-      if (n === 0) return EQ;
-      if (n >= 1) { ord = cmp(x._0, y._0); if (ord !== EQ) return ord;
-      if (n >= 2) { ord = cmp(x._1, y._1); if (ord !== EQ) return ord;
-      if (n >= 3) { ord = cmp(x._2, y._2); if (ord !== EQ) return ord;
-      if (n >= 4) { ord = cmp(x._3, y._3); if (ord !== EQ) return ord;
-      if (n >= 5) { ord = cmp(x._4, y._4); if (ord !== EQ) return ord;
-      if (n >= 6) { ord = cmp(x._5, y._5); if (ord !== EQ) return ord;
-      if (n >= 7) throw new Error('Comparison error: ' + err); } } } } } }
-      return EQ;
-    }
-    throw new Error('Comparison error: comparison is only defined on ints, ' +
-        'floats, times, chars, strings, lists of comparable values, ' +
-        'and tuples of comparable values.')
-  }
-
-
-  var Tuple0 = { ctor: "Tuple0" };
-  function Tuple2(x,y) { return { ctor:"Tuple2", _0:x, _1:y } }
-
-  var count = 0;
-  function guid(_) { return count++ }
-
-  function copy(r) {
-    var o = {};
-    for (var i in r) { o[i] = r[i]; }
-    return o;
-  }
-
-  function remove(x,r) {
-    var o = copy(r);
-    if (x in o._) {
-      o[x] = o._[x][0];
-      o._[x] = o._[x].slice(1);
-      if (o._[x].length === 0) { delete o._[x]; }
-    } else {
-      delete o[x];
-    }
-    return o;
-  }
-
-  function replace(kvs,r) {
-    var o = copy(r);
-    for (var i = kvs.length; i--; ) {
-      var kvsi = kvs[i];
-      o[kvsi[0]] = kvsi[1];
-    }
-    return o;
-  }
-
-  function insert(x,v,r) {
-    var o = copy(r);
-    if (x in o) o._[x] = [o[x]].concat(x in o._ ? o._[x].slice(0) : []);
-    o[x] = v;
-    return o;
-  }
-
-  function max(a,b) { return a > b ? a : b }
-  function min(a,b) { return a < b ? a : b }
-
-  function mod(a,b) {
-    var r = a % b;
-    var m = a === 0 ? 0 : (b > 0 ? (a >= 0 ? r : r+b) : -mod(-a,-b));
-
-    return m === b ? 0 : m;
-  }
-
-  function htmlHeight(width, html) {
-    var t = document.createElement('div');
-    t.innerHTML = html;
-    if (width > 0) { t.style.width = width + "px"; }
-    t.style.visibility = "hidden";
-    t.style.styleFloat = "left";
-    t.style.cssFloat   = "left";
-
-    elm.node.appendChild(t);
-    var style = window.getComputedStyle(t, null);
-    var w = Math.ceil(style.getPropertyValue("width").slice(0,-2) - 0);
-    var h = Math.ceil(style.getPropertyValue("height").slice(0,-2) - 0);
-    elm.node.removeChild(t);
-    return Tuple2(w,h);
-  }
-
-  function adjustOffset() {
-      var node = elm.node;
-      var offsetX = 0, offsetY = 0;
-      if (node.offsetParent) {
-          do {
-              offsetX += node.offsetLeft;
-              offsetY += node.offsetTop;
-          } while (node = node.offsetParent);
-      }
-      elm.node.offsetX = offsetX;
-      elm.node.offsetY = offsetY;
-  }
-
-  if (elm.display === ElmRuntime.Display.COMPONENT) {
-      elm.node.addEventListener('mouseover', adjustOffset);
-  }
-
-  return elm.Native.Utils = {
-      eq:eq,
-      cmp:compare,
-      compare:F2(compare),
-      Tuple0:Tuple0,
-      Tuple2:Tuple2,
-      copy: copy,
-      remove: remove,
-      replace: replace,
-      insert: insert,
-      guid: guid,
-      max : F2(max),
-      min : F2(min),
-      mod : F2(mod),
-      htmlHeight: F2(htmlHeight),
-      toFloat: function(x){return x}
-  };
-};
-
-Elm.Native.Text = function(elm) {
-  'use strict';
-
-  elm.Native = elm.Native || {};
-  if (elm.Native.Text) return elm.Native.Text;
-
-  var JS = Elm.JavaScript(elm);
-  var htmlHeight = Elm.Native.Utils(elm).htmlHeight;
-  var Color = Elm.Native.Color(elm);
-  var Element = Elm.Graphics.Element(elm);
-  var show = Elm.Native.Show(elm).show;
-
-  function makeSpaces(s) {
-    if (s.length == 0) { return s; }
-    var arr = s.split('');
-    if (arr[0] == ' ') { arr[0] = "&nbsp;" }      
-    for (var i = arr.length; --i; ) {
-      if (arr[i][0] == ' ' && arr[i-1] == ' ') {
-        arr[i-1] = arr[i-1] + arr[i];
-        arr[i] = '';
-      }
-    }
-    for (var i = arr.length; i--; ) {
-      if (arr[i].length > 1 && arr[i][0] == ' ') {
-        var spaces = arr[i].split('');
-        for (var j = spaces.length - 2; j >= 0; j -= 2) {
-          spaces[j] = '&nbsp;';
-        }
-        arr[i] = spaces.join('');
-      }
-    }
-    arr = arr.join('');
-    if (arr[arr.length-1] === " ") {
-	return arr.slice(0,-1) + '&nbsp;';
-    }
-    return arr;
-  }
-
-  function properEscape(str) {
-    if (str.length == 0) return str;
-    str = str //.replace(/&/g,  "&#38;")
-	.replace(/"/g, /*"*/ '&#34;')
-	.replace(/'/g, /*'*/ "&#39;")
-	.replace(/</g,  "&#60;")
-	.replace(/>/g,  "&#62;")
-	.replace(/\n/g, "<br/>");
-    var arr = str.split('<br/>');
-    for (var i = arr.length; i--; ) {
-	arr[i] = makeSpaces(arr[i]);
-    }
-    return arr.join('<br/>');
-  }
-
-  function toText(str) { return properEscape(JS.fromString(str)); }
-
-  function addTag(tag) { return function(text) {
-      return '<' + tag + ' style="padding:0;margin:0">' + text + '</' + tag + '>';
-    }
-  }
-  
-  function addStyle(style, value, text) {
-    return "<span style='" + style + ":" + value + "'>" + text + "</span>";
-  }
-
-  function typeface(name, text) {
-    return addStyle('font-family', JS.fromString(name), text);
-  }
-  function monospace(text) {
-    return addStyle('font-family', 'monospace', text);
-  }
-  function size(px, text) { return addStyle('font-size', px + 'px', text) }
-  var header = addTag('h1');
-  function height(h, text) { return addStyle('font-size', h+'em', text) }
-  function italic(text) { return addStyle('font-style', 'italic', text) }
-  var bold = addTag('b');
-
-  function extract(c) {
-    if (c._3 === 1) { return 'rgb(' + c._0 + ',' + c._1 + ',' + c._2 + ')'; }
-    return 'rgba(' + c._0 + ',' + c._1 + ',' + c._2 + ',' + c._3 + ')';
-  }
-  function color(c, text) {
-    return addStyle('color', extract(c), text);
-  }
-  function underline(text) { return addStyle('text-decoration', 'underline', text) }
-  function overline(text) { return addStyle('text-decoration', 'overline', text) }
-  function strikeThrough(text) {
-      return addStyle('text-decoration', 'line-through', text);
-  }
-  function link(href, text) {
-    return "<a href='" + toText(href) + "'>" + text + "</a>";
-  }
-
-  function position(pos) { return function(text) {
-    var e = {ctor:'RawHtml',
-	     _0: '<div style="padding:0;margin:0;text-align:' +
-                   pos + '">' + text + '</div>'
-            };
-    var p = A2(htmlHeight, 0, text);
-    return A3(Element.newElement, p._0, p._1, e);
-   }
-  }
-
-  function asText(v) {
-      return position('left')(monospace(toText(show(v))));
-  }
-
-  function plainText(v) {
-      return position('left')(toText(v));
-  }
-
-  return elm.Native.Text = {
-      toText: toText,
-
-      header : header,
-      height : F2(height),
-      italic : italic,
-      bold : bold,
-      underline : underline,
-      overline : overline,
-      strikeThrough : strikeThrough,
-      monospace : monospace,
-      typeface : F2(typeface),
-      color : F2(color),
-      link : F2(link),
-
-      justified : position('justify'),
-      centered : position('center'),
-      righted : position('right'),
-      text : position('left'),
-      plainText : plainText,
-
-      asText : asText
-  };
-
-};
-Elm.Native.Show = function(elm) {
-    'use strict';
-
-    elm.Native = elm.Native || {};
-    if (elm.Native.Show) return elm.Native.Show;
-
-    var NList = Elm.Native.List(elm);
-    var List = Elm.List(elm);
-    var Maybe = Elm.Maybe(elm);
-    var JS = Elm.JavaScript(elm);
-    var Dict = Elm.Dict(elm);
-    var Json = Elm.Json(elm);
-    var Tuple2 = Elm.Native.Utils(elm).Tuple2;
-
-    var toString = function(v) {
-        if (typeof v === "function") {
-            var name = v.func ? v.func.name : v.name;
-            return '<function' + (name === '' ? '' : ': ') + name + '>';
-        } else if (typeof v === "boolean") {
-            return v ? "True" : "False";
-        } else if (typeof v === "number") {
-            return v+"";
-        } else if (typeof v === "string" && v.length < 2) {
-            return "'" + showChar(v) + "'";
-        } else if (typeof v === "object" && '_' in v) {
-            var output = [];
-            for (var k in v._) {
-                for (var i = v._[k].length; i--; ) {
-                    output.push(k + " = " + toString(v._[k][i]));
-                }
-            }
-            for (var k in v) {
-                if (k === '_') continue;
-                output.push(k + " = " + toString(v[k]));
-            }
-            if (output.length === 0) return "{}";
-            return "{ " + output.join(", ") + " }";
-        } else if (typeof v === "object" && 'ctor' in v) {
-            if (v.ctor.substring(0,5) === "Tuple") {
-                var output = [];
-                for (var k in v) {
-                    if (k === 'ctor') continue;
-                    output.push(toString(v[k]));
-                }
-                return "(" + output.join(",") + ")";
-            } else if (v.ctor === "Cons") {
-                var isStr = typeof v._0 === "string",
-                start = isStr ? '"' : "[",
-                end   = isStr ? '"' : "]",
-                sep   = isStr ?  "" : ",",
-                f     = !isStr ? toString : showChar;
-                var output = start + f(v._0);
-                v = v._1;
-                while (v.ctor === "Cons") {
-                    output += sep + f(v._0);
-                    v = v._1;
-                }
-                return output + end;
-            } else if (v.ctor === "Nil") {
-                return "[]";
-            } else if (v.ctor === "RBNode" || v.ctor === "RBEmpty") {
-                var cons = F3(function(k,v,acc){return NList.Cons(Tuple2(k,v),acc)});
-                var list = A3(Dict.foldr, cons, NList.Nil, v);
-                var name = "Dict";
-                if (list.ctor === "Cons" && list._0._1.ctor === "Tuple0") {
-                    name = "Set";
-                    list = A2(List.map, function(x){return x._0}, list);
-                }
-                return name + ".fromList " + toString(list);
-            } else {
-                var output = "";
-                for (var i in v) {
-                    if (i === 'ctor') continue;
-                    var str = toString(v[i]);
-                    var parenless = str[0] === '{' || str.indexOf(' ') < 0;
-                    output += ' ' + (parenless ? str : '(' + str + ')');
-                }
-                return v.ctor + output;
-            }
-        }
-        return v+"";
-    };
-    function show(v) { return NList.fromArray(toString(v)); }
-
-    function showChar (c) {
-        return c === '\n' ? '\\n' :
-               c === '\t' ? '\\t' :
-               c === '\b' ? '\\b' :
-               c === '\r' ? '\\r' :
-               c === '\v' ? '\\v' :
-               c === '\0' ? '\\0' :
-               c === '\'' ? "\\'" :
-               c === '\"' ? '\\"' :
-               c === '\\' ? '\\\\' : c;
-    }
-
-    return elm.Native.Show = { show:show };
-};
-
-Elm.Native.Prelude = function(elm) {
-  'use strict';
-  if (elm.Native.Prelude) return elm.Native.Prelude;
-
-  var JS = Elm.JavaScript(elm);
-  var Maybe = Elm.Maybe(elm);
+  var JS = Elm.Native.JavaScript(elm);
+  // var Maybe = Elm.Maybe(elm);
   var Utils = Elm.Native.Utils(elm);
-  var Char = Elm.Char(elm);
+  //var Char = Elm.Char(elm);
 
   function div(a,b) { return (a/b)|0; }
   function rem(a,b) { return a % b; }
   var mod = Utils.mod;
   function abs(x) { return x < 0 ? -x : x; }
   function logBase(base,n) { return Math.log(n) / Math.log(base); }
-  function min(a,b) { return a < b ? a : b; }
-  function max(a,b) { return a > b ? a : b; }
-  function clamp(lo,hi,n) { return n < lo ? lo : n > hi ? hi : n; }
+  function min(a,b) { return Utils.cmp(a,b) < 0 ? a : b; }
+  function max(a,b) { return Utils.cmp(a,b) > 0 ? a : b; }
+  function clamp(lo,hi,n) {
+      return Utils.cmp(n,lo) < 0 ? lo : Utils.cmp(n,hi) > 0 ? hi : n; }
   function xor(a,b) { return a !== b; }
   function not(b) { return !b; }
 
   function truncate(n) { return n|0; }
 
-  function id(n) { return n; }
-  function flip(f,a,b) { return A2(f,b,a); }
   function curry(f,a,b) { return f(Utils.Tuple2(a,b)); }
   function uncurry(f,v) { return A2(f,v._0,v._1); }
   function fst(t) { return t._0; }
   function snd(t) { return t._1; }
-
+/*
   function readInt(str) {
     var s = JS.fromString(str);
     var len = s.length;
@@ -457,8 +64,8 @@ Elm.Native.Prelude = function(elm) {
     }
     return Maybe.Just(parseFloat(s));
   }
-
-  var prelude = {
+*/
+  var basics = {
       div:F2(div),
       rem:F2(rem),
       mod:mod,
@@ -483,654 +90,190 @@ Elm.Native.Prelude = function(elm) {
 
       xor:F2(xor),
       not:not,
-      otherwise:true,
 
       truncate:truncate,
       ceiling:Math.ceil,
       floor:Math.floor,
       round:Math.round,
-      toFloat:id,
+      toFloat:function(x) { return x; },
 
-      readInt:readInt,
-      readFloat:readFloat,
+      //readInt:readInt,
+      //readFloat:readFloat,
 
-      id:id,
-      flip:F3(flip),
       curry:F3(curry),
       uncurry:F2(uncurry),
       fst:fst,
       snd:snd
   };
 
-  function add(Module) {
-    var M = Module(elm);
-    for (var k in M) { prelude[k] = M[k]; }
-  }
-  add(Elm.Native.Show);
-  add(Elm.Signal);
-  add(Elm.List);
-  add(Elm.Maybe);
-  add(Elm.Time);
-  add(Elm.Graphics.Element);
-
-  return elm.Native.Prelude = prelude;
+  return elm.Native.Basics = basics;
 };
 
-Elm.Native.Matrix2D = function(elm) {
- "use strict";
+Elm.Native.Char = function(elm) {
+ 'use strict';
 
  elm.Native = elm.Native || {};
- if (elm.Native.Matrix2D) return elm.Native.Matrix2D;
+ if (elm.Native.Char) return elm.Native.Char;
 
- var A;
- if (typeof Float32Array === 'undefined') {
-     A = function(arr) {
-         this.length = arr.length;
-         this[0] = arr[0];
-         this[1] = arr[1];
-         this[2] = arr[2];
-         this[3] = arr[3];
-         this[4] = arr[4];
-         this[5] = arr[5];
+ function isBetween(lo,hi) { return function(chr) {
+	 var c = chr.charCodeAt(0);
+	 return lo <= c && c <= hi;
      };
- } else {
-     A = Float32Array;
  }
+ var isDigit = isBetween('0'.charCodeAt(0),'9'.charCodeAt(0));
+ var chk1 = isBetween('a'.charCodeAt(0),'f'.charCodeAt(0));
+ var chk2 = isBetween('A'.charCodeAt(0),'F'.charCodeAt(0));
 
- // layout of matrix in an array is
- //
- //   | m11 m12 dx |
- //   | m21 m22 dy |
- //   |  0   0   1 |
- //
- //  new A([ m11, m12, dx, m21, m22, dy ])
-
- var identity = new A([1,0,0,0,1,0]);
- function matrix(m11, m12, m21, m22, dx, dy) {
-     return new A([m11, m12, dx, m21, m22, dy]);
- }
- function rotation(t) {
-     var c = Math.cos(t);
-     var s = Math.sin(t);
-     return new A([c, -s, 0, s, c, 0]);
- }
-
- function rotate(t,m) {
-     var c = Math.cos(t);
-     var s = Math.sin(t);
-     var m11 = m[0], m12 = m[1], m21 = m[3], m22 = m[4];
-     return new A([m11*c + m12*s, -m11*s + m12*c, m[2],
-                   m21*c + m22*s, -m21*s + m22*c, m[5]]);
- }
- /*
- function move(xy,m) {
-     var x = xy._0;
-     var y = xy._1;
-     var m11 = m[0], m12 = m[1], m21 = m[3], m22 = m[4];
-     return new A([m11, m12, m11*x + m12*y + m[2],
-                   m21, m22, m21*x + m22*y + m[5]]);
- }
- function scale(s,m) { return new A([m[0]*s, m[1]*s, m[2], m[3]*s, m[4]*s, m[5]]); }
- function scaleX(x,m) { return new A([m[0]*x, m[1], m[2], m[3]*x, m[4], m[5]]); }
- function scaleY(y,m) { return new A([m[0], m[1]*y, m[2], m[3], m[4]*y, m[5]]); }
- function reflectX(m) { return new A([-m[0], m[1], m[2], -m[3], m[4], m[5]]); }
- function reflectY(m) { return new A([m[0], -m[1], m[2], m[3], -m[4], m[5]]); }
-
- function transform(m11, m21, m12, m22, mdx, mdy, n) {
-     var n11 = n[0], n12 = n[1], n21 = n[3], n22 = n[4], ndx = n[2], ndy = n[5];
-     return new A([m11*n11 + m12*n21,
-                   m11*n12 + m12*n22,
-                   m11*ndx + m12*ndy + mdx,
-                   m21*n11 + m22*n21,
-                   m21*n12 + m22*n22,
-                   m21*ndx + m22*ndy + mdy]);
- }
- */
- function multiply(m, n) {
-     var m11 = m[0], m12 = m[1], m21 = m[3], m22 = m[4], mdx = m[2], mdy = m[5];
-     var n11 = n[0], n12 = n[1], n21 = n[3], n22 = n[4], ndx = n[2], ndy = n[5];
-     return new A([m11*n11 + m12*n21,
-                   m11*n12 + m12*n22,
-                   m11*ndx + m12*ndy + mdx,
-                   m21*n11 + m22*n21,
-                   m21*n12 + m22*n22,
-                   m21*ndx + m22*ndy + mdy]);
- }
-
- return elm.Native.Matrix2D = {
-     identity:identity,
-     matrix:F6(matrix),
-     rotation:rotation,
-     multiply:F2(multiply)
-     /*
-     transform:F7(transform),
-     rotate:F2(rotate),
-     move:F2(move),
-     scale:F2(scale),
-     scaleX:F2(scaleX),
-     scaleY:F2(scaleY),
-     reflectX:reflectX,
-     reflectY:reflectY
-     */
+ return elm.Native.Char = {
+     fromCode : function(c) { return String.fromCharCode(c); },
+     toCode   : function(c) { return c.charCodeAt(0); },
+     toUpper  : function(c) { return c.toUpperCase(); },
+     toLower  : function(c) { return c.toLowerCase(); },
+     toLocaleUpper : function(c) { return c.toLocaleUpperCase(); },
+     toLocaleLower : function(c) { return c.toLocaleLowerCase(); },
+     isLower    : isBetween('a'.charCodeAt(0),'z'.charCodeAt(0)),
+     isUpper    : isBetween('A'.charCodeAt(0),'Z'.charCodeAt(0)),
+     isDigit    : isDigit,
+     isOctDigit : isBetween('0'.charCodeAt(0),'7'.charCodeAt(0)),
+     isHexDigit : function(c) { return isDigit(c) || chk1(c) || chk2(c); }
  };
 
 };
-Elm.Native.List = function(elm) {
-  "use strict";
 
-  elm.Native = elm.Native || {};
-  if (elm.Native.List) return elm.Native.List;
-  if ('values' in Elm.Native.List)
-      return elm.Native.List = Elm.Native.List.values;
 
-  var Utils = Elm.Native.Utils(elm);
+Elm.Native.Color = function(elm) {
+ "use strict";
 
-  // TODO: Improve Nil handling
-  // We can change places like:  if (xs.ctor === 'Nil') ... to if (xs === Nil) ...
-  // but only if we're confident Nil can only be defined once.
-  // Currently (27Mar2013) each module can have different instantiations, so multiple Nil objects can exist
-  // (and if they're used interchangeably then direct object comparison fails where ctor doesn't).
-  // So, this can only be fixed when modules initialisation is also fixed.
-  // The performance overhead of the .ctor calls is 5-10% according to jsperf (depending on fn + list size)
-  // (on firefox 19)
+ elm.Native = elm.Native || {};
+ if (elm.Native.Color) return elm.Native.Color;
 
-  var Nil = { ctor:'Nil' };
+ var Utils = Elm.Native.Utils(elm);
 
-  // using freeze for every cons would be nice but is a huge (9x on firefox 19)
-  // performance penalty
-  function Cons(hd,tl) { return { ctor:"Cons", _0:hd, _1:tl }; }
+ function complement(rgb) {
+     var hsv = toHSV(rgb);
+     hsv.hue = (hsv.hue + 180) % 360;
+     return toRGB(hsv);
+ }
 
-  function throwError(f) {
-    throw new Error("Function '" + f + "' expects a non-empty list!");
-  }
+ function hsva(h,s,v,a) {
+     var degree = A2(Utils.mod, h * 180 / Math.PI, 360);
+     var clr = toRGB({hue:degree, saturation:s, value:v});
+     clr._3 = a;
+     return clr;
+ }
 
-  function toArray(xs) {
-    var out = [];
-    while (xs.ctor !== 'Nil') {
-      out.push(xs._0);
-      xs = xs._1;
-    }
-    return out;
-  }
+ function hsv(h,s,v) {
+     var degree = A2(Utils.mod, h * 180 / Math.PI, 360);
+     return toRGB({hue:degree, saturation:s, value:v});
+ }
 
-  function fromArray(arr) {
-    var out = Nil;
-    for (var i = arr.length; i--; ) {
-      out = Cons(arr[i], out);
-    }
-    return out;
-  }
+ function toHSV(rgb) {
+  var hsv = {};
+  var r = rgb._0 / 255.0, g = rgb._1 / 255.0, b = rgb._2 / 255.0;
+  var M = Math.max(r,g,b);
+  var m = Math.min(r,g,b);
+  var c = M - m;
 
-  function range(lo,hi) {
-    var lst = Nil;
-    if (lo <= hi) {
-      do { lst = Cons(hi,lst) } while (hi-->lo);
-    }
-    return lst
-  }
+  var h = 0;
+       if (c === 0) { h = 0; }
+  else if (M === r) { h = ((g - b) / c) % 6; }
+  else if (M === g) { h = ((b - r) / c) + 2; }
+  else if (M === b) { h = ((r - g) / c) + 4; }
+  h *= 60;
 
-  function append(xs,ys) {
-    if (typeof xs === "string") { return xs.concat(ys); }
-    if (xs.ctor === 'Nil') { return ys; }
-    var root = Cons(xs._0, Nil);
-    var curr = root;
-    xs = xs._1;
-    while (xs.ctor !== 'Nil') {
-	curr._1 = Cons(xs._0, Nil);
-	xs = xs._1;
-	curr = curr._1;
-    }
-    curr._1 = ys;
-    return root;
-  }
+  return { value : M, hue : h, saturation : (M === 0 ? 0 : c / M) };
+ }
 
-  function head(v) { return v.ctor === 'Nil' ? throwError('head') : v._0; }
-  function tail(v) { return v.ctor === 'Nil' ? throwError('tail') : v._1; }
+ function between(lo,hi,x) { return lo <= x && x < hi; }
+ function norm(n) { return Math.round(n*255); }
 
-  function last(xs) {
-    if (xs.ctor === 'Nil') { throwError('last'); }
-    var out = xs._0;
-    while (xs.ctor !== 'Nil') {
-      out = xs._0;
-      xs = xs._1;
-    }
-    return out;
-  }
+ function toRGB(hsv) {
+  var c = hsv.value * hsv.saturation;
+  var hue = hsv.hue / 60;
+  var x = c * (1 - Math.abs((hue % 2) - 1));
+  var r = 0, g = 0, b = 0;
+       if (between(0,1,hue)) { r = c; g = x; b = 0; }
+  else if (between(1,2,hue)) { r = x; g = c; b = 0; }
+  else if (between(2,3,hue)) { r = 0; g = c; b = x; }
+  else if (between(3,4,hue)) { r = 0; g = x; b = c; }
+  else if (between(4,5,hue)) { r = x; g = 0; b = c; }
+  else if (between(5,6,hue)) { r = c; g = 0; b = x; }
 
-  function map(f, xs) {
-    var arr = [];
-    while (xs.ctor !== 'Nil') {
-      arr.push(f(xs._0));
-      xs = xs._1;
-    }
-    return fromArray(arr);
-  }
+  var m = hsv.value - c;
+  return { ctor:"Color", _0:norm(r+m), _1:norm(g+m), _2:norm(b+m), _3:1 };
+ }
 
-   // f defined similarly for both foldl and foldr (NB: different from Haskell)
-   // ie, foldl :: (a -> b -> b) -> b -> [a] -> b
-  function foldl(f, b, xs) {
-    var acc = b;
-    while (xs.ctor !== 'Nil') {
-      acc = A2(f, xs._0, acc);
-      xs = xs._1;
-    }
-    return acc;
-  }
-
-  function foldr(f, b, xs) {
-    var arr = toArray(xs);
-    var acc = b;
-    for (var i = arr.length; i--; ) {
-      acc = A2(f, arr[i], acc);
-    }
-    return acc;
-  }
-
-  function foldl1(f, xs) {
-    return xs.ctor === 'Nil' ? throwError('foldl1') : foldl(f, xs._0, xs._1);
-  }
-
-  function foldr1(f, xs) {
-    if (xs.ctor === 'Nil') { throwError('foldr1'); }
-    var arr = toArray(xs);
-    var acc = arr.pop();
-    for (var i = arr.length; i--; ) {
-      acc = A2(f, arr[i], acc);
-    }
-    return acc;
-  }
-
-  function scanl(f, b, xs) {
-    var arr = toArray(xs);
-    arr.unshift(b);
-    var len = arr.length;
-    for (var i = 1; i < len; ++i) {
-      arr[i] = A2(f, arr[i], arr[i-1]);
-    }
-    return fromArray(arr);
-  }
-
-  function scanl1(f, xs) {
-    return xs.ctor === 'Nil' ? throwError('scanl1') : scanl(f, xs._0, xs._1);
-  }
-
-  function filter(pred, xs) {
-    var arr = [];
-    while (xs.ctor !== 'Nil') {
-      if (pred(xs._0)) { arr.push(xs._0); }
-      xs = xs._1;
-    }
-    return fromArray(arr);
-  }
-
-  function length(xs) {
-    var out = 0;
-    while (xs.ctor !== 'Nil') {
-      out += 1;
-      xs = xs._1;
-    }
-    return out;
-  }
-
-  function member(x, xs) {
-    while (xs.ctor !== 'Nil') {
-      if (Utils.eq(x,xs._0)) return true;
-      xs = xs._1;
-    }
-    return false;
-  }
-
-  function reverse(xs) { return fromArray(toArray(xs).reverse()); }
-
-  function concat(xss) {
-      if (xss.ctor === 'Nil') return xss;
-      var arr = toArray(xss);
-      var xs = arr[arr.length-1];
-      for (var i = arr.length-1; i--; ) {
-	  xs = append(arr[i], xs);
-      }
-      return xs;
-  }
-
-  function all(pred, xs) {
-    while (xs.ctor !== 'Nil') {
-      if (!pred(xs._0)) return false;
-      xs = xs._1;
-    }
-    return true;
-  }
-
-  function any(pred, xs) {
-    while (xs.ctor !== 'Nil') {
-      if (pred(xs._0)) return true;
-      xs = xs._1;
-    }
-    return false;
-  }
-
-  function zipWith(f, xs, ys) {
-    var arr = [];
-    while (xs.ctor !== 'Nil' && ys.ctor !== 'Nil') {
-      arr.push(A2(f, xs._0, ys._0));
-      xs = xs._1;
-      ys = ys._1;
-    }
-    return fromArray(arr);
-  }
-
-  function zip(xs, ys) {
-    var arr = [];
-    while (xs.ctor !== 'Nil' && ys.ctor !== 'Nil') {
-      arr.push(Utils.Tuple2(xs._0, ys._0));
-      xs = xs._1;
-      ys = ys._1;
-    }
-    return fromArray(arr);
-  }
-
-  function sort(xs) {
-    function cmp(a,b) {
-      var ord = Utils.compare(a,b).ctor;
-      return ord=== 'EQ' ? 0 : ord === 'LT' ? -1 : 1;
-    }
-    return fromArray(toArray(xs).sort(cmp));
-  }
-
-  function take(n, xs) {
-    var arr = [];
-    while (xs.ctor !== 'Nil' && n > 0) {
-      arr.push(xs._0);
-      xs = xs._1;
-      --n;
-    }
-    return fromArray(arr);
-  }
-
-  function drop(n, xs) {
-    while (xs.ctor !== 'Nil' && n > 0) {
-      xs = xs._1;
-      --n;
-    }
-    return xs;
-  }
-
-  function join(sep, xss) {
-    if (typeof sep === 'string') return toArray(xss).join(sep);
-    if (xss.ctor === 'Nil') return Nil;
-    var s = toArray(sep);
-    var out = toArray(xss._0);
-    xss = xss._1;
-    while (xss.ctor !== 'Nil') {
-      out = out.concat(s, toArray(xss._0));
-      xss = xss._1;
-    }
-    return fromArray(out);
-  }
-
-  function split(seperator, list) {
-    var array = toArray(list);
-    var alen = array.length;
-    if (alen === 0) {
-      // splitting an empty list is a list of lists: [[]]
-      return Cons(Nil,Nil);
-    }
-
-    var sep = toArray(seperator);
-    var seplen = sep.length;
-    if (seplen === 0) {
-      // splitting with an empty sep is a list of all elements
-      // Same as (map (\x -> [x]) list)
-      var out = Nil;
-      for (var i = alen; i--; ) {
-        out = Cons(Cons(array[i],Nil), out);
-      }
-      return out;
-    }
-
-    var matches = [-seplen];
-    var sepStart = sep[0];
-    var len = alen - seplen + 1;
-    for (var i = 0; i < len; ++i) {
-      if (Utils.eq(array[i], sepStart)) {
-        var match = true;
-        for (var j = seplen; --j; ) {
-          if (!Utils.eq(array[i+j], sep[j])) { match = false;  break; }
-        }
-        if (match) {
-          matches.push(i);
-          i += seplen - 1;
-        }
-      }
-    }
-
-    // shortcut in case of no matches
-    if (matches.length === 0) {
-      return Cons(list,Nil);
-    }
-
-    var out = Nil;
-    var index = alen - 1;
-    for (var i = matches.length; i--; ) {
-      var temp = Nil;
-      var stop = matches[i] + seplen - 1;
-      for ( ; index > stop; --index ) {
-        temp = Cons(array[index], temp);
-      }
-      out = Cons(temp,out);
-      index -= seplen;
-    }
-    return out;
-  }
-
-  Elm.Native.List.values = {
-      Nil:Nil,
-      Cons:Cons,
-      toArray:toArray,
-      fromArray:fromArray,
-      range:range,
-      append:append,
-
-      head:head,
-      tail:tail,
-      last:last,
-
-      map:F2(map),
-      foldl:F3(foldl),
-      foldr:F3(foldr),
-
-      foldl1:F2(foldl1),
-      foldr1:F2(foldr1),
-      scanl:F3(scanl),
-      scanl1:F2(scanl1),
-      filter:F2(filter),
-      length:length,
-      member:F2(member),
-      reverse:reverse,
-      concat:concat,
-
-      all:F2(all),
-      any:F2(any),
-      zipWith:F3(zipWith),
-      zip:F2(zip),
-      sort:sort,
-      take:F2(take),
-      drop:F2(drop),
-
-      join:F2(join),
-      split:F2(split)
-  };
-  return elm.Native.List = Elm.Native.List.values;
+ return elm.Native.Color = {
+    hsva:F4(hsva),
+    hsv:F3(hsv),
+    complement:complement
+ };
 
 };
-Elm.Native.Json = function(elm) {
-  'use strict';
+Elm.Native.Date = function(elm) {
+ 'use strict';
 
-  var Maybe = Elm.Maybe(elm);
-  var Dict = Elm.Dict(elm);
-  var List = Elm.List(elm);
-  var JS = Elm.JavaScript(elm);
-  var Utils = Elm.Native.Utils(elm);
+ elm.Native = elm.Native || {};
+ if (elm.Native.Date) return elm.Native.Date;
 
-  function fromValue(v) {
-    switch (v.ctor) {
-    case 'Null'   : return null;
-    case 'String' : return JS.fromString(v._0);
-    case 'Object' :
-      var obj = {};
-      var array = JS.fromList(Dict.toList(v._0));
-      for (var i = array.length; i--; ) {
-	obj[JS.fromString(array[i]._0)] = fromValue(array[i]._1);
-      }
-      return obj;
-    case 'Array'  :
-      var array = JS.fromList(v._0);
-      for (var i = array.length; i--; ) {
-	array[i] = fromValue(array[i]);
-      }
-      return array;
-    default :
-      return v._0;
-    }
-  }
+ var JS = Elm.JavaScript(elm);
+ var Maybe = Elm.Maybe(elm);
 
-  function toPrettyJSString(sep, obj) {
-    return JSON.stringify(fromValue(obj), null, JS.fromString(sep));
-  }
+ function dateNow() { return new window.Date; }
+ function readDate(str) {
+     var d = new window.Date(JS.fromString(str));
+     if (isNaN(d.getTime())) return Maybe.Nothing;
+     return Maybe.Just(d);
+ }
 
-  function toValue(v) {
-    switch (typeof v) {
-    case 'string' : return { ctor:"String", _0: JS.toString(v) };
-    case 'number' : return { ctor:"Number", _0: JS.toFloat(v)  };
-    case 'boolean': return { ctor:"Bool"  , _0: JS.toBool(v)   };
-    case 'object' :
-      if (v === null) return { ctor:"Null" };
-      if (v instanceof Array) {
-          for (var i = v.length; i--; ) { v[i] = toValue(v[i]); }
-	  return { ctor:"Array", _0: JS.toList(v) };
-      }
-      var array = [];
-      for (var k in v) array.push(Utils.Tuple2(JS.toString(k), toValue(v[k])));
-      return { ctor:"Object", _0: Dict.fromList(JS.toList(array)) };
-    }
-  }
+ var dayTable = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+ var monthTable = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+		   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]; 
 
-  function fromJSString(str) {
-    try {
-	return Maybe.Just(toValue(JSON.parse(str)));
-    } catch (e) {
-	return Maybe.Nothing;
-    }
-  }
-
-  return elm.Native.Json = {
-      toJSString : F2(toPrettyJSString),
-      fromJSString : fromJSString,
-      toJSObject : fromValue,
-      fromJSObject : toValue
-  };
+ return elm.Native.Date = {
+     read    : readDate,
+     year    : function(d) { return d.getFullYear(); },
+     month   : function(d) { return { ctor:monthTable[d.getMonth()] }; },
+     day     : function(d) { return d.getDate(); },
+     hour    : function(d) { return d.getHours(); },
+     minute  : function(d) { return d.getMinutes(); },
+     second  : function(d) { return d.getSeconds(); },
+     toTime  : function(d) { return d.getTime(); },
+     dayOfWeek : function(d) { return { ctor:dayTable[d.getDay()] }; }
+ };
 
 };
 
-Elm.Native.JavaScript = function(elm) {
-  'use strict';
+Elm.Native.Error = function(elm) {
+    'use strict';
+    elm.Native = elm.Native || {};
+    if (elm.Native.Error) return elm.Native.Error;
 
-  elm.Native = elm.Native || {};
-  if (elm.Native.JavaScript) return elm.Native.JavaScript;
+    var fromString = Elm.Native.JavaScript(elm).fromString;
 
-  var List = Elm.Native.List(elm);
-  var Render = ElmRuntime.use(ElmRuntime.Render.Element);
-
-  function fromJS(v) {
-    var type = typeof v;
-    if (type === 'number' ) return v;
-    if (type === 'boolean') return v;
-    if (type === 'string' ) return List.fromArray(v);
-    if (v instanceof Array) {
-      var arr = [];
-      var len = v.length;
-      for (var i = 0; i < len; ++i) {
-	var x = fromJS(v[i]);
-	if (x !== null) arr.push(x);
-      }
-      return List.fromArray(arr);
+    function indent(lines) {
+        var msg = '';
+        for (var i = 0; i < lines.length; ++i) {
+            msg += '<br/>&nbsp; &nbsp; ' + lines[i];
+        }
+        return msg;
     }
-    if (type === 'object') {
-      var rec = { _:{} };
-      for (var f in v) {
-	var x = fromJS(v[f]);
-	if (x !== null) rec[f] = x;
-      }
-      return rec;
+
+    function Case(moduleName, span) { 
+	var msg = indent(['Non-exhaustive pattern match in case-expression.',
+                          'Make sure your patterns cover every case!']);
+	throw new Error('Runtime error in module ' + moduleName + ' (' + span + '):' + msg);
     }
-    return null;
-  }
 
-  function toJS(v) {
-    var type = typeof v;
-    if (type === 'number' || type === 'boolean') return v;
-    if (type === 'object' && '_' in v) {
-	var obj = {};
-	for (var k in v) {
-	    var x = v[k];
-	    if (x !== null) obj[k] = x;
-	}
-	return obj;
+    function If(moduleName, span) { 
+	var msg = indent(['Non-exhaustive pattern match in multi-way-if expression.',
+                          'It is best to use \'otherwise\' as the last branch of multi-way-if.']);
+	throw new Error('Runtime error in module ' + moduleName + ' (' + span + '):' + msg);
     }
-    if (type === 'object' && (v.ctor === 'Cons' || v.ctor === 'Nil')) {
-	var array = List.toArray(v);
-	for (var i = array.length; i--; ) {
-	    array[i] = toJS(array[i]);
-	}
-	if (typeof array[0] === 'string') array.join('');
-	return array;
-    }
-    return null;
-  }
-  
-  function fromRecord(r) {
-    if (typeof r === 'object' && '_' in r) {
-      return toJS(r);
-    }
-    throw new Error("'fromRecord' must be called on a record.");
-  }
 
-  function id(n) { return n; }
+    function raise(str) { throw new Error(fromString(str)); }
 
-  function toElement(w,h,domNode) {
-      return A3( newElement, w, h, {
-              ctor: 'Custom',
-              type: 'DomNode',
-              render: function(node) { return node; },
-              update: function(node,oldNode,newNode) {
-                  if (node === newNode) return;
-                  node.parentNode.replaceChild(newNode, node);
-              },
-              model: domNode
-          });
-  }
-
-  function fromElement(element) {
-      return Render.render(element);
-  }
-
-  return elm.Native.JavaScript = {
-      toFloat    : id,
-      toBool     : id,
-      toInt      : function(n) { return n|0; },
-      toString   : List.fromArray,
-      toList     : List.fromArray,
-      fromString : function(s) { return List.toArray(s).join(''); },
-      fromList   : List.toArray,
-      fromInt    : id,
-      fromFloat  : id,
-      fromBool   : id,
-
-      toElement   : toElement,
-      fromElement : fromElement,
-      toRecord    : fromJS,
-      fromRecord  : fromRecord
-  };
-
+    return elm.Native.Error = { Case: Case, If: If, raise: raise };
 };
 function F2(fun) {
   function wrapper(a) { return function(b) { return fun(a,b) } }
@@ -1233,452 +376,1611 @@ function A9(fun,a,b,c,d,e,f,g,h,i) {
                          : fun(a)(b)(c)(d)(e)(f)(g)(h)(i);
 }
 
-Elm.Native.Error = function(elm) {
-    'use strict';
-    elm.Native = elm.Native || {};
-    if (elm.Native.Error) return elm.Native.Error;
-
-    var fromString = Elm.Native.JavaScript(elm).fromString;
-
-    function Case(span) { 
-	var msg = 'Non-exhaustive pattern match in case expression'
-	throw new Error(msg + " (" + span + ")")
-    }
-
-    function If(span) { 
-	var msg = 'Non-exhaustive pattern match in multi-way-if expression'
-	throw new Error(msg + " (" + span + ")")
-    }
-
-    function raise(str) { throw new Error(fromString(str)); }
-
-    return elm.Native.Error = { Case: Case, If: If, raise: raise };
-};
-Elm.Native.Date = function(elm) {
- 'use strict';
-
- elm.Native = elm.Native || {};
- if (elm.Native.Date) return elm.Native.Date;
-
- var JS = Elm.JavaScript(elm);
- var Maybe = Elm.Maybe(elm);
-
- function dateNow() { return new window.Date; }
- function readDate(str) {
-     var d = new window.Date(JS.fromString(str));
-     if (isNaN(d.getTime())) return Maybe.Nothing;
-     return Maybe.Just(d);
- }
-
- var dayTable = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
- var monthTable = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-		   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]; 
-
- return elm.Native.Date = {
-     read    : readDate,
-     year    : function(d) { return d.getFullYear(); },
-     month   : function(d) { return { ctor:monthTable[d.getMonth()] }; },
-     day     : function(d) { return d.getDate(); },
-     hour    : function(d) { return d.getHours(); },
-     minute  : function(d) { return d.getMinutes(); },
-     second  : function(d) { return d.getSeconds(); },
-     toTime  : function(d) { return d.getTime(); },
-     dayOfWeek : function(d) { return { ctor:dayTable[d.getDay()] }; }
- };
-
-};
-
-
-Elm.Native.Color = function(elm) {
- "use strict";
-
- elm.Native = elm.Native || {};
- if (elm.Native.Color) return elm.Native.Color;
-
- var Utils = Elm.Native.Utils(elm);
-
- function complement(rgb) {
-     var hsv = toHSV(rgb);
-     hsv.hue = (hsv.hue + 180) % 360;
-     return toRGB(hsv);
- }
-
- function hsva(h,s,v,a) {
-     var degree = A2(Utils.mod, h * 180 / Math.PI, 360);
-     var clr = toRGB({hue:degree, saturation:s, value:v});
-     clr._3 = a;
-     return clr;
- }
-
- function hsv(h,s,v) {
-     var degree = A2(Utils.mod, h * 180 / Math.PI, 360);
-     return toRGB({hue:degree, saturation:s, value:v});
- }
-
- function toHSV(rgb) {
-  var hsv = {};
-  var r = rgb._0 / 255.0, g = rgb._1 / 255.0, b = rgb._2 / 255.0;
-  var M = Math.max(r,g,b);
-  var m = Math.min(r,g,b);
-  var c = M - m;
-
-  var h = 0;
-       if (c === 0) { h = 0; }
-  else if (M === r) { h = ((g - b) / c) % 6; }
-  else if (M === g) { h = ((b - r) / c) + 2; }
-  else if (M === b) { h = ((r - g) / c) + 4; }
-  h *= 60;
-
-  return { value : M, hue : h, saturation : (M === 0 ? 0 : c / M) };
- }
-
- function between(lo,hi,x) { return lo <= x && x < hi; }
- function norm(n) { return Math.round(n*255); }
-
- function toRGB(hsv) {
-  var c = hsv.value * hsv.saturation;
-  var hue = hsv.hue / 60;
-  var x = c * (1 - Math.abs((hue % 2) - 1));
-  var r = 0, g = 0, b = 0;
-       if (between(0,1,hue)) { r = c; g = x; b = 0; }
-  else if (between(1,2,hue)) { r = x; g = c; b = 0; }
-  else if (between(2,3,hue)) { r = 0; g = c; b = x; }
-  else if (between(3,4,hue)) { r = 0; g = x; b = c; }
-  else if (between(4,5,hue)) { r = x; g = 0; b = c; }
-  else if (between(5,6,hue)) { r = c; g = 0; b = x; }
-
-  var m = hsv.value - c;
-  return { ctor:"Color", _0:norm(r+m), _1:norm(g+m), _2:norm(b+m), _3:1 };
- }
-
- return elm.Native.Color = {
-    hsva:F4(hsva),
-    hsv:F3(hsv),
-    complement:complement
- };
-
-};
-Elm.Native.Char = function(elm) {
- 'use strict';
-
- elm.Native = elm.Native || {};
- if (elm.Native.Char) return elm.Native.Char;
-
- function isBetween(lo,hi) { return function(chr) {
-	 var c = chr.charCodeAt(0);
-	 return lo <= c && c <= hi;
-     };
- }
- var isDigit = isBetween('0'.charCodeAt(0),'9'.charCodeAt(0));
- var chk1 = isBetween('a'.charCodeAt(0),'f'.charCodeAt(0));
- var chk2 = isBetween('A'.charCodeAt(0),'F'.charCodeAt(0));
-
- return elm.Native.Char = {
-     fromCode : function(c) { return String.fromCharCode(c); },
-     toCode   : function(c) { return c.charCodeAt(0); },
-     toUpper  : function(c) { return c.toUpperCase(); },
-     toLower  : function(c) { return c.toLowerCase(); },
-     toLocaleUpper : function(c) { return c.toLocaleUpperCase(); },
-     toLocaleLower : function(c) { return c.toLocaleLowerCase(); },
-     isLower    : isBetween('a'.charCodeAt(0),'z'.charCodeAt(0)),
-     isUpper    : isBetween('A'.charCodeAt(0),'Z'.charCodeAt(0)),
-     isDigit    : isDigit,
-     isOctDigit : isBetween('0'.charCodeAt(0),'7'.charCodeAt(0)),
-     isHexDigit : function(c) { return isDigit(c) || chk1(c) || chk2(c); }
- };
-
-};
-
-Elm.Native.Window = function(elm) {
+Elm.Native.JavaScript = function(elm) {
   'use strict';
 
   elm.Native = elm.Native || {};
-  if (elm.Native.Window) return elm.Native.Window;
+  if (elm.Native.JavaScript) return elm.Native.JavaScript;
 
-  var Signal = Elm.Signal(elm);
-  var Tuple2 = Elm.Native.Utils(elm).Tuple2;
+  var List = Elm.Native.List(elm);
+  var Render = ElmRuntime.use(ElmRuntime.Render.Element);
 
-  function getWidth() { return elm.node.clientWidth; }
-  function getHeight() {
-      if (elm.display === ElmRuntime.Display.FULLSCREEN) {
-          return window.innerHeight;
+  function fromJS(v) {
+      var type = typeof v;
+      if (type === 'number' ) return v;
+      if (type === 'boolean') return v;
+      if (type === 'string' ) return List.fromArray(v);
+      if (v instanceof Array) {
+          var arr = [];
+          var len = v.length;
+          for (var i = 0; i < len; ++i) {
+              var x = fromJS(v[i]);
+              if (x !== null) arr.push(x);
+          }
+          return List.fromArray(arr);
       }
-      return elm.node.clientHeight;
+      if (type === 'object') {
+          var rec = { _:{} };
+          for (var f in v) {
+              var x = fromJS(v[f]);
+              if (x !== null) rec[f] = x;
+          }
+          return rec;
+      }
+      return null;
   }
 
-  var dimensions = Signal.constant(Tuple2(getWidth(), getHeight()));
-  dimensions.defaultNumberOfKids = 2;
-
-  // Do not move width and height into Elm. By setting the default number of kids,
-  // the resize listener can be detached.
-  var width  = A2(Signal.lift, function(p){return p._0;}, dimensions);
-  width.defaultNumberOfKids = 0;
-
-  var height = A2(Signal.lift, function(p){return p._1;}, dimensions);
-  height.defaultNumberOfKids = 0;
-
-  function resizeIfNeeded() {
-      var w = getWidth();
-      var h = getHeight();
-      if (dimensions.value._0 === w && dimensions.value._1 === h) return;
-      var hasListener = elm.notify(dimensions.id, Tuple2(w,h));
-      if (!hasListener) window.removeEventListener('resize', resizeIfNeeded);
+  function toJS(v) {
+      var type = typeof v;
+      if (type === 'number' || type === 'boolean') return v;
+      if (type === 'object' && '_' in v) {
+          var obj = {};
+          for (var k in v) {
+              var x = toJS(v[k]);
+              if (x !== null) obj[k] = x;
+          }
+          return obj;
+      }
+      if (type === 'object' && (v.ctor === '::' || v.ctor === '[]')) {
+          var array = List.toArray(v);
+          if (typeof array[0] === 'string') {
+              array = array.join('');
+          } else {
+              for (var i = array.length; i--; ) {
+                  array[i] = toJS(array[i]);
+              }
+          }
+          return array;
+      }
+      return null;
   }
-  window.addEventListener('resize', resizeIfNeeded);
 
-  return elm.Native.Window = {
-      dimensions:dimensions,
-      width:width,
-      height:height,
-      resizeIfNeeded:resizeIfNeeded
+  function fromRecord(r) {
+      if (typeof r === 'object' && '_' in r) {
+          return toJS(r);
+      }
+      throw new Error("'fromRecord' must be called on a record.");
+  }
+
+  function id(n) { return n; }
+
+  function toElement(w,h,domNode) {
+      return A3( newElement, w, h, {
+              ctor: 'Custom',
+              type: 'DomNode',
+              render: function(node) { return node; },
+              update: function(node,oldNode,newNode) {
+                  if (node === newNode) return;
+                  node.parentNode.replaceChild(newNode, node);
+              },
+              model: domNode
+          });
+  }
+
+  function fromElement(element) {
+      return Render.render(element);
+  }
+
+  return elm.Native.JavaScript = {
+      toFloat    : id,
+      toBool     : id,
+      toInt      : function(n) { return n|0; },
+      toString   : List.fromArray,
+      toList     : List.fromArray,
+      fromString : function(s) { return List.toArray(s).join(''); },
+      fromList   : List.toArray,
+      fromInt    : id,
+      fromFloat  : id,
+      fromBool   : id,
+
+      toElement   : toElement,
+      fromElement : fromElement,
+      toRecord    : fromJS,
+      fromRecord  : fromRecord
   };
 
 };
 
-Elm.Native.WebSocket = function(elm) {
+Elm.Native.Json = function(elm) {
   'use strict';
 
-  elm.Native = elm.Native || {};
-  if (elm.Native.WebSocket) return elm.Native.WebSocket;
-
-  var Signal = Elm.Signal(elm);
+  var Maybe = Elm.Maybe(elm);
+  var Dict = Elm.Dict(elm);
+  var List = Elm.List(elm);
   var JS = Elm.JavaScript(elm);
-  var List = Elm.Native.List(elm);
+  var Utils = Elm.Native.Utils(elm);
 
-  function open(url, outgoing) {
-    var incoming = Signal.constant(List.Nil);
-    var ws = new WebSocket(JS.fromString(url));
-
-    var pending = [];
-    var ready = false;
-    
-    ws.onopen = function(e) {
-      var len = pending.length;
-      for (var i = 0; i < len; ++i) { ws.send(pending[i]); }
-      ready = true;
-    };
-    ws.onmessage = function(event) {
-      elm.notify(incoming.id, JS.toString(event.data));
-    };
-    
-    function send(msg) {
-      var s = JS.fromString(msg);
-      ready ? ws.send(s) : pending.push(s);
+  function fromValue(v) {
+    switch (v.ctor) {
+    case 'Null'   : return null;
+    case 'String' : return JS.fromString(v._0);
+    case 'Object' :
+      var obj = {};
+      var array = JS.fromList(Dict.toList(v._0));
+      for (var i = array.length; i--; ) {
+	obj[JS.fromString(array[i]._0)] = fromValue(array[i]._1);
+      }
+      return obj;
+    case 'Array'  :
+      var array = JS.fromList(v._0);
+      for (var i = array.length; i--; ) {
+	array[i] = fromValue(array[i]);
+      }
+      return array;
+    default :
+      return v._0;
     }
-    
-    function take1(x,y) { return x }
-    return A3(Signal.lift2, F2(take1), incoming, A2(Signal.lift, send, outgoing));
   }
 
-  return elm.Native.WebSocket = { connect: F2(open) };
+  function toPrettyJSString(sep, obj) {
+    return JSON.stringify(fromValue(obj), null, JS.fromString(sep));
+  }
+
+  function toValue(v) {
+    switch (typeof v) {
+    case 'string' : return { ctor:"String", _0: JS.toString(v) };
+    case 'number' : return { ctor:"Number", _0: JS.toFloat(v)  };
+    case 'boolean': return { ctor:"Bool"  , _0: JS.toBool(v)   };
+    case 'object' :
+      if (v === null) return { ctor:"Null" };
+      if (v instanceof Array) {
+          for (var i = v.length; i--; ) { v[i] = toValue(v[i]); }
+	  return { ctor:"Array", _0: JS.toList(v) };
+      }
+      var array = [];
+      for (var k in v) array.push(Utils.Tuple2(JS.toString(k), toValue(v[k])));
+      return { ctor:"Object", _0: Dict.fromList(JS.toList(array)) };
+    }
+  }
+
+  function fromJSString(str) {
+    try {
+	return Maybe.Just(toValue(JSON.parse(str)));
+    } catch (e) {
+	return Maybe.Nothing;
+    }
+  }
+
+  return elm.Native.Json = {
+      toJSString : F2(toPrettyJSString),
+      fromJSString : fromJSString,
+      toJSObject : fromValue,
+      fromJSObject : toValue
+  };
+
+};
+Elm.Native.List = function(elm) {
+  "use strict";
+
+  elm.Native = elm.Native || {};
+  if (elm.Native.List) return elm.Native.List;
+  if ('values' in Elm.Native.List)
+      return elm.Native.List = Elm.Native.List.values;
+
+  var Utils = Elm.Native.Utils(elm);
+
+  // TODO: Improve Nil handling
+  // We can change places like:  if (xs.ctor === '[]') ... to if (xs === Nil) ...
+  // but only if we're confident Nil can only be defined once.
+  // Currently (27Mar2013) each module can have different instantiations, so multiple Nil objects can exist
+  // (and if they're used interchangeably then direct object comparison fails where ctor doesn't).
+  // So, this can only be fixed when modules initialisation is also fixed.
+  // The performance overhead of the .ctor calls is 5-10% according to jsperf (depending on fn + list size)
+  // (on firefox 19)
+
+  var Nil = { ctor:'[]' };
+
+  // using freeze for every cons would be nice but is a huge (9x on firefox 19)
+  // performance penalty
+  function Cons(hd,tl) { return { ctor:"::", _0:hd, _1:tl }; }
+
+  function throwError(f) {
+    throw new Error("Function '" + f + "' expects a non-empty list!");
+  }
+
+  function toArray(xs) {
+    var out = [];
+    while (xs.ctor !== '[]') {
+      out.push(xs._0);
+      xs = xs._1;
+    }
+    return out;
+  }
+
+  function fromArray(arr) {
+    var out = Nil;
+    for (var i = arr.length; i--; ) {
+      out = Cons(arr[i], out);
+    }
+    return out;
+  }
+
+  function range(lo,hi) {
+    var lst = Nil;
+    if (lo <= hi) {
+      do { lst = Cons(hi,lst) } while (hi-->lo);
+    }
+    return lst
+  }
+
+  function append(xs,ys) {
+    if (typeof xs === "string") { return xs.concat(ys); }
+    if (xs.ctor === '[]') { return ys; }
+    var root = Cons(xs._0, Nil);
+    var curr = root;
+    xs = xs._1;
+    while (xs.ctor !== '[]') {
+	curr._1 = Cons(xs._0, Nil);
+	xs = xs._1;
+	curr = curr._1;
+    }
+    curr._1 = ys;
+    return root;
+  }
+
+  function head(v) { return v.ctor === '[]' ? throwError('head') : v._0; }
+  function tail(v) { return v.ctor === '[]' ? throwError('tail') : v._1; }
+
+  function last(xs) {
+    if (xs.ctor === '[]') { throwError('last'); }
+    var out = xs._0;
+    while (xs.ctor !== '[]') {
+      out = xs._0;
+      xs = xs._1;
+    }
+    return out;
+  }
+
+  function map(f, xs) {
+    var arr = [];
+    while (xs.ctor !== '[]') {
+      arr.push(f(xs._0));
+      xs = xs._1;
+    }
+    return fromArray(arr);
+  }
+
+   // f defined similarly for both foldl and foldr (NB: different from Haskell)
+   // ie, foldl : (a -> b -> b) -> b -> [a] -> b
+  function foldl(f, b, xs) {
+    var acc = b;
+    while (xs.ctor !== '[]') {
+      acc = A2(f, xs._0, acc);
+      xs = xs._1;
+    }
+    return acc;
+  }
+
+  function foldr(f, b, xs) {
+    var arr = toArray(xs);
+    var acc = b;
+    for (var i = arr.length; i--; ) {
+      acc = A2(f, arr[i], acc);
+    }
+    return acc;
+  }
+
+  function foldl1(f, xs) {
+    return xs.ctor === '[]' ? throwError('foldl1') : foldl(f, xs._0, xs._1);
+  }
+
+  function foldr1(f, xs) {
+    if (xs.ctor === '[]') { throwError('foldr1'); }
+    var arr = toArray(xs);
+    var acc = arr.pop();
+    for (var i = arr.length; i--; ) {
+      acc = A2(f, arr[i], acc);
+    }
+    return acc;
+  }
+
+  function scanl(f, b, xs) {
+    var arr = toArray(xs);
+    arr.unshift(b);
+    var len = arr.length;
+    for (var i = 1; i < len; ++i) {
+      arr[i] = A2(f, arr[i], arr[i-1]);
+    }
+    return fromArray(arr);
+  }
+
+  function scanl1(f, xs) {
+    return xs.ctor === '[]' ? throwError('scanl1') : scanl(f, xs._0, xs._1);
+  }
+
+  function filter(pred, xs) {
+    var arr = [];
+    while (xs.ctor !== '[]') {
+      if (pred(xs._0)) { arr.push(xs._0); }
+      xs = xs._1;
+    }
+    return fromArray(arr);
+  }
+
+  function length(xs) {
+    var out = 0;
+    while (xs.ctor !== '[]') {
+      out += 1;
+      xs = xs._1;
+    }
+    return out;
+  }
+
+  function member(x, xs) {
+    while (xs.ctor !== '[]') {
+      if (Utils.eq(x,xs._0)) return true;
+      xs = xs._1;
+    }
+    return false;
+  }
+
+  function reverse(xs) { return fromArray(toArray(xs).reverse()); }
+
+  function concat(xss) {
+      if (xss.ctor === '[]') return xss;
+      var arr = toArray(xss);
+      var xs = arr[arr.length-1];
+      for (var i = arr.length-1; i--; ) {
+	  xs = append(arr[i], xs);
+      }
+      return xs;
+  }
+
+  function all(pred, xs) {
+    while (xs.ctor !== '[]') {
+      if (!pred(xs._0)) return false;
+      xs = xs._1;
+    }
+    return true;
+  }
+
+  function any(pred, xs) {
+    while (xs.ctor !== '[]') {
+      if (pred(xs._0)) return true;
+      xs = xs._1;
+    }
+    return false;
+  }
+
+  function zipWith(f, xs, ys) {
+    var arr = [];
+    while (xs.ctor !== '[]' && ys.ctor !== '[]') {
+      arr.push(A2(f, xs._0, ys._0));
+      xs = xs._1;
+      ys = ys._1;
+    }
+    return fromArray(arr);
+  }
+
+  function zip(xs, ys) {
+    var arr = [];
+    while (xs.ctor !== '[]' && ys.ctor !== '[]') {
+      arr.push(Utils.Tuple2(xs._0, ys._0));
+      xs = xs._1;
+      ys = ys._1;
+    }
+    return fromArray(arr);
+  }
+
+  function sort(xs) {
+    function cmp(a,b) {
+      var ord = Utils.compare(a,b).ctor;
+      return ord=== 'EQ' ? 0 : ord === 'LT' ? -1 : 1;
+    }
+    return fromArray(toArray(xs).sort(cmp));
+  }
+
+  function nth(xs, n) {
+    return toArray(xs)[n];
+  }
+
+  function take(n, xs) {
+    var arr = [];
+    while (xs.ctor !== '[]' && n > 0) {
+      arr.push(xs._0);
+      xs = xs._1;
+      --n;
+    }
+    return fromArray(arr);
+  }
+
+  function drop(n, xs) {
+    while (xs.ctor !== '[]' && n > 0) {
+      xs = xs._1;
+      --n;
+    }
+    return xs;
+  }
+
+  function join(sep, xss) {
+    if (typeof sep === 'string') return toArray(xss).join(sep);
+    if (xss.ctor === '[]') return Nil;
+    var s = toArray(sep);
+    var out = toArray(xss._0);
+    xss = xss._1;
+    while (xss.ctor !== '[]') {
+      out = out.concat(s, toArray(xss._0));
+      xss = xss._1;
+    }
+    return fromArray(out);
+  }
+
+  function split(seperator, list) {
+    var array = toArray(list);
+    var alen = array.length;
+    if (alen === 0) {
+      // splitting an empty list is a list of lists: [[]]
+      return Cons(Nil,Nil);
+    }
+
+    var sep = toArray(seperator);
+    var seplen = sep.length;
+    if (seplen === 0) {
+      // splitting with an empty sep is a list of all elements
+      // Same as (map (\x -> [x]) list)
+      var out = Nil;
+      for (var i = alen; i--; ) {
+        out = Cons(Cons(array[i],Nil), out);
+      }
+      return out;
+    }
+
+    var matches = [-seplen];
+    var sepStart = sep[0];
+    var len = alen - seplen + 1;
+    for (var i = 0; i < len; ++i) {
+      if (Utils.eq(array[i], sepStart)) {
+        var match = true;
+        for (var j = seplen; --j; ) {
+          if (!Utils.eq(array[i+j], sep[j])) { match = false;  break; }
+        }
+        if (match) {
+          matches.push(i);
+          i += seplen - 1;
+        }
+      }
+    }
+
+    // shortcut in case of no matches
+    if (matches.length === 0) {
+      return Cons(list,Nil);
+    }
+
+    var out = Nil;
+    var index = alen - 1;
+    for (var i = matches.length; i--; ) {
+      var temp = Nil;
+      var stop = matches[i] + seplen - 1;
+      for ( ; index > stop; --index ) {
+        temp = Cons(array[index], temp);
+      }
+      out = Cons(temp,out);
+      index -= seplen;
+    }
+    return out;
+  }
+
+  Elm.Native.List.values = {
+      Nil:Nil,
+      Cons:Cons,
+      cons:F2(Cons),
+      toArray:toArray,
+      fromArray:fromArray,
+      range:range,
+      append:append,
+
+      head:head,
+      tail:tail,
+      last:last,
+
+      map:F2(map),
+      foldl:F3(foldl),
+      foldr:F3(foldr),
+
+      foldl1:F2(foldl1),
+      foldr1:F2(foldr1),
+      scanl:F3(scanl),
+      scanl1:F2(scanl1),
+      filter:F2(filter),
+      length:length,
+      member:F2(member),
+      reverse:reverse,
+      concat:concat,
+
+      all:F2(all),
+      any:F2(any),
+      zipWith:F3(zipWith),
+      zip:F2(zip),
+      sort:sort,
+      nth:F2(nth),
+      take:F2(take),
+      drop:F2(drop),
+
+      join:F2(join),
+      split:F2(split)
+  };
+  return elm.Native.List = Elm.Native.List.values;
+
+};
+Elm.Native.Matrix2D = function(elm) {
+ "use strict";
+
+ elm.Native = elm.Native || {};
+ if (elm.Native.Matrix2D) return elm.Native.Matrix2D;
+
+ var A;
+ if (typeof Float32Array === 'undefined') {
+     A = function(arr) {
+         this.length = arr.length;
+         this[0] = arr[0];
+         this[1] = arr[1];
+         this[2] = arr[2];
+         this[3] = arr[3];
+         this[4] = arr[4];
+         this[5] = arr[5];
+     };
+ } else {
+     A = Float32Array;
+ }
+
+ // layout of matrix in an array is
+ //
+ //   | m11 m12 dx |
+ //   | m21 m22 dy |
+ //   |  0   0   1 |
+ //
+ //  new A([ m11, m12, dx, m21, m22, dy ])
+
+ var identity = new A([1,0,0,0,1,0]);
+ function matrix(m11, m12, m21, m22, dx, dy) {
+     return new A([m11, m12, dx, m21, m22, dy]);
+ }
+ function rotation(t) {
+     var c = Math.cos(t);
+     var s = Math.sin(t);
+     return new A([c, -s, 0, s, c, 0]);
+ }
+
+ function rotate(t,m) {
+     var c = Math.cos(t);
+     var s = Math.sin(t);
+     var m11 = m[0], m12 = m[1], m21 = m[3], m22 = m[4];
+     return new A([m11*c + m12*s, -m11*s + m12*c, m[2],
+                   m21*c + m22*s, -m21*s + m22*c, m[5]]);
+ }
+ /*
+ function move(xy,m) {
+     var x = xy._0;
+     var y = xy._1;
+     var m11 = m[0], m12 = m[1], m21 = m[3], m22 = m[4];
+     return new A([m11, m12, m11*x + m12*y + m[2],
+                   m21, m22, m21*x + m22*y + m[5]]);
+ }
+ function scale(s,m) { return new A([m[0]*s, m[1]*s, m[2], m[3]*s, m[4]*s, m[5]]); }
+ function scaleX(x,m) { return new A([m[0]*x, m[1], m[2], m[3]*x, m[4], m[5]]); }
+ function scaleY(y,m) { return new A([m[0], m[1]*y, m[2], m[3], m[4]*y, m[5]]); }
+ function reflectX(m) { return new A([-m[0], m[1], m[2], -m[3], m[4], m[5]]); }
+ function reflectY(m) { return new A([m[0], -m[1], m[2], m[3], -m[4], m[5]]); }
+
+ function transform(m11, m21, m12, m22, mdx, mdy, n) {
+     var n11 = n[0], n12 = n[1], n21 = n[3], n22 = n[4], ndx = n[2], ndy = n[5];
+     return new A([m11*n11 + m12*n21,
+                   m11*n12 + m12*n22,
+                   m11*ndx + m12*ndy + mdx,
+                   m21*n11 + m22*n21,
+                   m21*n12 + m22*n22,
+                   m21*ndx + m22*ndy + mdy]);
+ }
+ */
+ function multiply(m, n) {
+     var m11 = m[0], m12 = m[1], m21 = m[3], m22 = m[4], mdx = m[2], mdy = m[5];
+     var n11 = n[0], n12 = n[1], n21 = n[3], n22 = n[4], ndx = n[2], ndy = n[5];
+     return new A([m11*n11 + m12*n21,
+                   m11*n12 + m12*n22,
+                   m11*ndx + m12*ndy + mdx,
+                   m21*n11 + m22*n21,
+                   m21*n12 + m22*n22,
+                   m21*ndx + m22*ndy + mdy]);
+ }
+
+ return elm.Native.Matrix2D = {
+     identity:identity,
+     matrix:F6(matrix),
+     rotation:rotation,
+     multiply:F2(multiply)
+     /*
+     transform:F7(transform),
+     rotate:F2(rotate),
+     move:F2(move),
+     scale:F2(scale),
+     scaleX:F2(scaleX),
+     scaleY:F2(scaleY),
+     reflectX:reflectX,
+     reflectY:reflectY
+     */
+ };
+
 };
 
-Elm.Native.Touch = function(elm) {
+Elm.Native.Prelude = function(elm) {
+  'use strict';
+  if (elm.Native.Prelude) return elm.Native.Prelude;
+
+  var JS = Elm.Native.JavaScript(elm);
+  var Maybe = Elm.Maybe(elm);
+  var Char = Elm.Char(elm);
+
+  function readInt(str) {
+    var s = JS.fromString(str);
+    var len = s.length;
+    if (len === 0) { return Maybe.Nothing; }
+    var start = 0;
+    if (s[0] == '-') {
+      if (len === 1) { return Maybe.Nothing; }
+      start = 1;
+    }
+    for (var i = start; i < len; ++i) {
+      if (!Char.isDigit(s[i])) { return Maybe.Nothing; }
+    }
+    return Maybe.Just(parseInt(s, 10));
+  }
+
+  function readFloat(str) {
+    var s = JS.fromString(str);
+    var len = s.length;
+    if (len === 0) { return Maybe.Nothing; }
+    var start = 0;
+    if (s[0] == '-') {
+      if (len === 1) { return Maybe.Nothing; }
+      start = 1;
+    }
+    var dotCount = 0;
+    for (var i = start; i < len; ++i) {
+      if (Char.isDigit(s[i])) { continue; }
+      if (s[i] === '.') {
+        dotCount += 1;
+        if (dotCount <= 1) { continue; }
+      }
+      return Maybe.Nothing;
+    }
+    return Maybe.Just(parseFloat(s));
+  }
+
+  return elm.Native.Prelude = {
+      readInt:readInt,
+      readFloat:readFloat,
+  };
+
+};
+
+Elm.Native.Show = function(elm) {
+    'use strict';
+
+    elm.Native = elm.Native || {};
+    if (elm.Native.Show) return elm.Native.Show;
+
+    var NList = Elm.Native.List(elm);
+    var List = Elm.List(elm);
+    var Maybe = Elm.Maybe(elm);
+    var JS = Elm.JavaScript(elm);
+    var Dict = Elm.Dict(elm);
+    var Json = Elm.Json(elm);
+    var Tuple2 = Elm.Native.Utils(elm).Tuple2;
+
+    var toString = function(v) {
+        if (typeof v === "function") {
+            var name = v.func ? v.func.name : v.name;
+            return '<function' + (name === '' ? '' : ': ') + name + '>';
+        } else if (typeof v === "boolean") {
+            return v ? "True" : "False";
+        } else if (typeof v === "number") {
+            return v+"";
+        } else if (typeof v === "string" && v.length < 2) {
+            return "'" + showChar(v) + "'";
+        } else if (typeof v === "object" && '_' in v) {
+            var output = [];
+            for (var k in v._) {
+                for (var i = v._[k].length; i--; ) {
+                    output.push(k + " = " + toString(v._[k][i]));
+                }
+            }
+            for (var k in v) {
+                if (k === '_') continue;
+                output.push(k + " = " + toString(v[k]));
+            }
+            if (output.length === 0) return "{}";
+            return "{ " + output.join(", ") + " }";
+        } else if (typeof v === "object" && 'ctor' in v) {
+            if (v.ctor.substring(0,6) === "_Tuple") {
+                var output = [];
+                for (var k in v) {
+                    if (k === 'ctor') continue;
+                    output.push(toString(v[k]));
+                }
+                return "(" + output.join(",") + ")";
+            } else if (v.ctor === "::") {
+                var isStr = typeof v._0 === "string",
+                start = isStr ? '"' : "[",
+                end   = isStr ? '"' : "]",
+                sep   = isStr ?  "" : ",",
+                f     = !isStr ? toString : showChar;
+                var output = start + f(v._0);
+                v = v._1;
+                while (v.ctor === "::") {
+                    output += sep + f(v._0);
+                    v = v._1;
+                }
+                return output + end;
+            } else if (v.ctor === "[]") {
+                return "[]";
+            } else if (v.ctor === "RBNode" || v.ctor === "RBEmpty") {
+                var cons = F3(function(k,v,acc){return NList.Cons(Tuple2(k,v),acc)});
+                var list = A3(Dict.foldr, cons, NList.Nil, v);
+                var name = "Dict";
+                if (list.ctor === "::" && list._0._1.ctor === "_Tuple0") {
+                    name = "Set";
+                    list = A2(List.map, function(x){return x._0}, list);
+                }
+                return name + ".fromList " + toString(list);
+            } else {
+                var output = "";
+                for (var i in v) {
+                    if (i === 'ctor') continue;
+                    var str = toString(v[i]);
+                    var parenless = str[0] === '{' || str[0] === '<' || str.indexOf(' ') < 0;
+                    output += ' ' + (parenless ? str : '(' + str + ')');
+                }
+                return v.ctor + output;
+            }
+        }
+        if (typeof v === 'object' && 'recv' in v) return '<signal>';
+        return "<internal structure>";
+    };
+    function show(v) { return NList.fromArray(toString(v)); }
+
+    function showChar (c) {
+        return c === '\n' ? '\\n' :
+               c === '\t' ? '\\t' :
+               c === '\b' ? '\\b' :
+               c === '\r' ? '\\r' :
+               c === '\v' ? '\\v' :
+               c === '\0' ? '\\0' :
+               c === '\'' ? "\\'" :
+               c === '\"' ? '\\"' :
+               c === '\\' ? '\\\\' : c;
+    }
+
+    return elm.Native.Show = { show:show };
+};
+
+Elm.Native.Text = function(elm) {
   'use strict';
 
   elm.Native = elm.Native || {};
-  if (elm.Native.Touch) return elm.Native.Touch;
+  if (elm.Native.Text) return elm.Native.Text;
 
-  var Signal = Elm.Signal(elm);
   var JS = Elm.JavaScript(elm);
-  var _ = Elm.Native.Utils(elm);
+  var htmlHeight = Elm.Native.Utils(elm).htmlHeight;
+  var Color = Elm.Native.Color(elm);
+  var Element = Elm.Graphics.Element(elm);
+  var show = Elm.Native.Show(elm).show;
 
-  function Dict() {
-    this.keys = [];
-    this.values = [];
+  function makeSpaces(s) {
+    if (s.length == 0) { return s; }
+    var arr = s.split('');
+    if (arr[0] == ' ') { arr[0] = "&nbsp;" }      
+    for (var i = arr.length; --i; ) {
+      if (arr[i][0] == ' ' && arr[i-1] == ' ') {
+        arr[i-1] = arr[i-1] + arr[i];
+        arr[i] = '';
+      }
+    }
+    for (var i = arr.length; i--; ) {
+      if (arr[i].length > 1 && arr[i][0] == ' ') {
+        var spaces = arr[i].split('');
+        for (var j = spaces.length - 2; j >= 0; j -= 2) {
+          spaces[j] = '&nbsp;';
+        }
+        arr[i] = spaces.join('');
+      }
+    }
+    arr = arr.join('');
+    if (arr[arr.length-1] === " ") {
+	return arr.slice(0,-1) + '&nbsp;';
+    }
+    return arr;
+  }
 
-    this.insert = function(key,value) {
-      this.keys.push(key);
-      this.values.push(value);
-    };
-    this.lookup = function(key) {
-      var i = this.keys.indexOf(key)
-      return i >= 0 ? this.values[i] : {x:0,y:0,t:0};
-    };
-    this.remove = function(key) {
-      var i = this.keys.indexOf(key);
-      if (i < 0) return;
-      var t = this.values[i];
-      this.keys.splice(i,1);
-      this.values.splice(i,1);
-      return t;
-    };
-    this.clear = function() {
-        this.keys = [];
-        this.values = [];
-    };
+  function properEscape(str) {
+    if (str.length == 0) return str;
+    str = str //.replace(/&/g,  "&#38;")
+	.replace(/"/g, /*"*/ '&#34;')
+	.replace(/'/g, /*'*/ "&#39;")
+	.replace(/</g,  "&#60;")
+	.replace(/>/g,  "&#62;")
+	.replace(/\n/g, "<br/>");
+    var arr = str.split('<br/>');
+    for (var i = arr.length; i--; ) {
+	arr[i] = makeSpaces(arr[i]);
+    }
+    return arr.join('<br/>');
+  }
+
+  function toText(str) { return properEscape(JS.fromString(str)); }
+
+  function addTag(tag) { return function(text) {
+      return '<' + tag + ' style="padding:0;margin:0">' + text + '</' + tag + '>';
+    }
   }
   
-  var root = Signal.constant([]),
-      tapTime = 500,
-      hasTap = false,
-      tap = {_:{},x:0,y:0},
-      dict = new Dict();
+  function addStyle(style, value, text) {
+    return "<span style='" + style + ":" + value + "'>" + text + "</span>";
+  }
 
-  function touch(t) {
-      var r = dict.lookup(t.identifier);
-      return {_ : {},
-	      id: t.identifier,
-	      x : t.pageX - elm.node.offsetX,
-	      y : t.pageY - elm.node.offsetY,
-	      x0: r.x,
-	      y0: r.y,
-	      t0: r.t
-	      };
+  function typeface(name, text) {
+    return addStyle('font-family', JS.fromString(name), text);
+  }
+  function monospace(text) {
+    return addStyle('font-family', 'monospace', text);
+  }
+  function size(px, text) { return addStyle('font-size', px + 'px', text) }
+  var header = addTag('h1');
+  function height(h, text) { return addStyle('font-size', h+'px', text) }
+  function italic(text) { return addStyle('font-style', 'italic', text) }
+  var bold = addTag('b');
+
+  function extract(c) {
+    if (c._3 === 1) { return 'rgb(' + c._0 + ',' + c._1 + ',' + c._2 + ')'; }
+    return 'rgba(' + c._0 + ',' + c._1 + ',' + c._2 + ',' + c._3 + ')';
+  }
+  function color(c, text) {
+    return addStyle('color', extract(c), text);
+  }
+  function underline(text) { return addStyle('text-decoration', 'underline', text) }
+  function overline(text) { return addStyle('text-decoration', 'overline', text) }
+  function strikeThrough(text) {
+      return addStyle('text-decoration', 'line-through', text);
+  }
+  function link(href, text) {
+    return "<a href='" + toText(href) + "'>" + text + "</a>";
+  }
+
+  function position(pos) { return function(text) {
+    var e = {ctor:'RawHtml',
+	     _0: '<div style="padding:0;margin:0;text-align:' +
+                   pos + '">' + text + '</div>'
+            };
+    var p = A2(htmlHeight, 0, text);
+    return A3(Element.newElement, p._0, p._1, e);
+   }
+  }
+
+  function asText(v) {
+      return position('left')(monospace(toText(show(v))));
+  }
+
+  function plainText(v) {
+      return position('left')(toText(v));
+  }
+
+  return elm.Native.Text = {
+      toText: toText,
+
+      header : header,
+      height : F2(height),
+      italic : italic,
+      bold : bold,
+      underline : underline,
+      overline : overline,
+      strikeThrough : strikeThrough,
+      monospace : monospace,
+      typeface : F2(typeface),
+      color : F2(color),
+      link : F2(link),
+
+      justified : position('justify'),
+      centered : position('center'),
+      righted : position('right'),
+      text : position('left'),
+      plainText : plainText,
+
+      asText : asText
+  };
+
+};
+Elm.Native.Utils = function(elm) {
+  'use strict';
+
+  elm.Native = elm.Native || {};
+  if (elm.Native.Utils) return elm.Native.Utils;
+
+  function eq(x,y) {
+    if (x === y) return true;
+    if (typeof x === "object") {
+      var c = 0;
+      for (var i in x) { ++c; if (!eq(x[i],y[i])) return false; }
+      return c === Object.keys(y).length;
+    }
+    if (typeof x === 'function') {
+      throw new Error('Equality error: general function equality is ' +
+      'undecidable, and therefore, unsupported');
+    }
+    return x === y;
+  }
+
+  // code in Generate/JavaScript.hs depends on the particular
+  // integer values assigned to LT, EQ, and GT
+  var LT = -1, EQ = 0, GT = 1, ord = ['LT','EQ','GT'];
+  function compare(x,y) { return { ctor: ord[cmp(x,y)+1] } }
+  function cmp(x,y) {
+    var ord;
+    if (typeof x !== 'object') return x === y ? EQ : x < y ? LT : GT;
+
+    if (x.ctor === "::" || x.ctor === "[]") {
+      while (true) {
+          if (x.ctor === "[]" && y.ctor === "[]") return EQ;
+          if (x.ctor !== y.ctor) return x.ctor === '[]' ? LT : GT;
+          ord = cmp(x._0, y._0);
+          if (ord !== EQ) return ord;
+          x = x._1;
+          y = y._1;
+      }
+    }
+
+    if (x.ctor.slice(0,6) === '_Tuple') {
+      var n = x.ctor.slice(6) - 0;
+      var err = 'cannot compare tuples with more than 6 elements.';
+      if (n === 0) return EQ;
+      if (n >= 1) { ord = cmp(x._0, y._0); if (ord !== EQ) return ord;
+      if (n >= 2) { ord = cmp(x._1, y._1); if (ord !== EQ) return ord;
+      if (n >= 3) { ord = cmp(x._2, y._2); if (ord !== EQ) return ord;
+      if (n >= 4) { ord = cmp(x._3, y._3); if (ord !== EQ) return ord;
+      if (n >= 5) { ord = cmp(x._4, y._4); if (ord !== EQ) return ord;
+      if (n >= 6) { ord = cmp(x._5, y._5); if (ord !== EQ) return ord;
+      if (n >= 7) throw new Error('Comparison error: ' + err); } } } } } }
+      return EQ;
+    }
+    throw new Error('Comparison error: comparison is only defined on ints, ' +
+        'floats, times, chars, strings, lists of comparable values, ' +
+        'and tuples of comparable values.')
+  }
+
+
+  var Tuple0 = { ctor: "_Tuple0" };
+  function Tuple2(x,y) { return { ctor:"_Tuple2", _0:x, _1:y } }
+
+  var count = 0;
+  function guid(_) { return count++ }
+
+  function copy(r) {
+    var o = {};
+    for (var i in r) { o[i] = r[i]; }
+    return o;
+  }
+
+  function remove(x,r) {
+    var o = copy(r);
+    if (x in o._) {
+      o[x] = o._[x][0];
+      o._[x] = o._[x].slice(1);
+      if (o._[x].length === 0) { delete o._[x]; }
+    } else {
+      delete o[x];
+    }
+    return o;
+  }
+
+  function replace(kvs,r) {
+    var o = copy(r);
+    for (var i = kvs.length; i--; ) {
+      var kvsi = kvs[i];
+      o[kvsi[0]] = kvsi[1];
+    }
+    return o;
+  }
+
+  function insert(x,v,r) {
+    var o = copy(r);
+    if (x in o) o._[x] = [o[x]].concat(x in o._ ? o._[x].slice(0) : []);
+    o[x] = v;
+    return o;
+  }
+
+  function max(a,b) { return a > b ? a : b }
+  function min(a,b) { return a < b ? a : b }
+
+  function mod(a,b) {
+    var r = a % b;
+    var m = a === 0 ? 0 : (b > 0 ? (a >= 0 ? r : r+b) : -mod(-a,-b));
+
+    return m === b ? 0 : m;
+  }
+
+  function htmlHeight(width, html) {
+    var t = document.createElement('div');
+    t.innerHTML = html;
+    if (width > 0) { t.style.width = width + "px"; }
+    t.style.visibility = "hidden";
+    t.style.styleFloat = "left";
+    t.style.cssFloat   = "left";
+
+    elm.node.appendChild(t);
+    var style = window.getComputedStyle(t, null);
+    var w = Math.ceil(style.getPropertyValue("width").slice(0,-2) - 0);
+    var h = Math.ceil(style.getPropertyValue("height").slice(0,-2) - 0);
+    elm.node.removeChild(t);
+    return Tuple2(w,h);
+  }
+
+  function adjustOffset() {
+      var node = elm.node;
+      var offsetX = 0, offsetY = 0;
+      if (node.offsetParent) {
+          do {
+              offsetX += node.offsetLeft;
+              offsetY += node.offsetTop;
+          } while (node = node.offsetParent);
+      }
+      elm.node.offsetX = offsetX;
+      elm.node.offsetY = offsetY;
+  }
+
+  if (elm.display === ElmRuntime.Display.COMPONENT) {
+      elm.addListener(elm.inputs, elm.node, 'mouseover', adjustOffset);
+  }
+
+  return elm.Native.Utils = {
+      eq:eq,
+      cmp:cmp,
+      compare:F2(compare),
+      Tuple0:Tuple0,
+      Tuple2:Tuple2,
+      copy: copy,
+      remove: remove,
+      replace: replace,
+      insert: insert,
+      guid: guid,
+      max : F2(max),
+      min : F2(min),
+      mod : F2(mod),
+      htmlHeight: F2(htmlHeight),
+      toFloat: function(x){return x}
+  };
+};
+
+Elm.Native.Graphics.Collage = function(elm) {
+ "use strict";
+
+ elm.Native = elm.Native || {};
+ elm.Native.Graphics = elm.Native.Graphics || {};
+ if (elm.Native.Graphics.Collage) return elm.Native.Graphics.Collage;
+
+ var newElement = Elm.Graphics.Element(elm).newElement;
+ var C = ElmRuntime.use(ElmRuntime.Render.Collage);
+
+ function collage(w,h,forms) {
+     return A3(newElement, w, h, {
+                 ctor: 'Custom',
+		 type: 'Collage',
+		 render: C.render,
+		 update: C.update,
+		 model: {w:w, h:h, forms:forms}
+	 });
+ }
+ return elm.Native.Graphics.Collage = { collage:F3(collage) };
+
+};
+Elm.Native.Graphics.Input = function(elm) {
+ "use strict";
+
+ elm.Native = elm.Native || {};
+ elm.Native.Graphics = elm.Native.Graphics || {};
+ if (elm.Native.Graphics.Input) return elm.Native.Graphics.Input;
+
+ var Render = ElmRuntime.use(ElmRuntime.Render.Element);
+ var newNode = ElmRuntime.use(ElmRuntime.Render.Utils).newElement;
+
+ var Signal = Elm.Signal(elm);
+ var newElement = Elm.Graphics.Element(elm).newElement;
+ var JS = Elm.Native.JavaScript(elm);
+ var Utils = Elm.Native.Utils(elm);
+ var Tuple2 = Utils.Tuple2;
+
+ function dropDown(values) {
+     var entries = JS.fromList(values);
+     var events = Signal.constant(entries[0]._1);
+
+     var drop = newNode('select');
+     drop.style.border = '0 solid';
+     for (var i = 0; i < entries.length; ++i) {
+         var option = newNode('option');
+         var name = JS.fromString(entries[i]._0);
+         option.value = name;
+         option.innerHTML = name;
+         drop.appendChild(option);
+     }
+     drop.addEventListener('change', function() {
+             elm.notify(events.id, entries[drop.selectedIndex]._1);
+         });
+
+     var t = drop.cloneNode(true);
+     t.style.visibility = "hidden";
+
+     elm.node.appendChild(t);
+     var style = window.getComputedStyle(t, null);
+     var w = Math.ceil(style.getPropertyValue("width").slice(0,-2) - 0);
+     var h = Math.ceil(style.getPropertyValue("height").slice(0,-2) - 0);
+     elm.node.removeChild(t);
+     
+     console.log(w,h);
+     var element = A3(newElement, w, h, {
+             ctor: 'Custom',
+             type: 'DropDown',
+             render: function render(model) { return drop; },
+             update: function update(node, oldModel, newModel) {},
+             model: {}
+         });
+
+     return Tuple2(Signal.constant(element), events);
+ }
+
+ function buttons(defaultValue) {
+     var events = Signal.constant(defaultValue);
+
+     function render(model) {
+         var b = newNode('button');
+         b.style.display = 'block';
+         b.elmEvent = model.event;
+         function click() { elm.notify(events.id, b.elmEvent); }
+         b.addEventListener('click', click);
+         b.innerHTML = model.text;
+         return b;
+     }
+
+     function update(node, oldModel, newModel) {
+         node.elmEvent = newModel.event;
+         var txt = newModel.text;
+         if (oldModel.text !== txt) node.innerHTML = txt;
+     }
+
+     function button(evnt, txt) {
+         return A3(newElement, 100, 40, {
+                     ctor: 'Custom',
+                     type: 'Button',
+                     render: render,
+                     update: update,
+                     model: { event:evnt, text:JS.fromString(txt) }
+             });
+     }
+
+     return { _:{}, button:F2(button), events:events };
+ }
+
+ function customButtons(defaultValue) {
+     var events = Signal.constant(defaultValue);
+
+     function render(model) {
+         var btn = newNode('div');
+         btn.elmEvent = model.event;
+
+         btn.elmUp    = Render.render(model.up);
+         btn.elmHover = Render.render(model.hover);
+         btn.elmDown  = Render.render(model.down);
+
+         function replace(node) {
+           if (node !== btn.firstChild) btn.replaceChild(node, btn.firstChild);
+         }
+         var overCount = 0;
+         function over(e) {
+             if (overCount++ > 0) return;
+             replace(btn.elmHover);
+         }
+         function out(e) {
+             if (btn.contains(e.toElement || e.relatedTarget)) return;
+             overCount = 0;
+             replace(btn.elmUp);
+         }
+         function up() {
+             replace(btn.elmHover);
+             elm.notify(events.id, btn.elmEvent);
+         }
+         function down() { replace(btn.elmDown); }
+         btn.addEventListener('mouseover', over);
+         btn.addEventListener('mouseout' , out);
+         btn.addEventListener('mousedown', down);
+         btn.addEventListener('mouseup'  , up);
+
+         btn.appendChild(btn.elmUp);
+
+         var clicker = newNode('div');
+         clicker.style.width = btn.elmUp.style.width;
+         clicker.style.height = btn.elmUp.style.height;
+         clicker.style.position = 'absolute';
+         clicker.style.top = 0;
+         btn.appendChild(clicker);
+
+         return btn;
+     }
+
+     function update(node, oldModel, newModel) {
+         node.elmEvent = newModel.event;
+         Render.update(node.elmUp, oldModel.up, newModel.up)
+         Render.update(node.elmHover, oldModel.hover, newModel.hover)
+         Render.update(node.elmDown, oldModel.down, newModel.down)
+     }
+
+     function button(evnt, up, hover, down) {
+         return A3(newElement,
+                   Math.max(up.props.width, hover.props.width, down.props.width),
+                   Math.max(up.props.height, hover.props.height, down.props.height),
+                   { ctor: 'Custom',
+                     type: 'CustomButton',
+                     render: render,
+                     update: update,
+                     model: { event:evnt, up:up, hover:hover, down:down }
+                   });
+     }
+
+     return { _:{}, customButton:F4(button), events:events };
+ }
+
+
+ function hoverables(defaultValue) {
+     var events = Signal.constant(defaultValue);
+     function hoverable(handler, elem) {
+         function onHover(bool) {
+             elm.notify(events.id, handler(bool));
+         }
+         var props = Utils.replace([['hover',onHover]], elem.props);
+         return { props:props, element:elem.element };
+     }
+     return { _:{}, hoverable:F2(hoverable), events:events };
+ }
+
+
+ function checkboxes(defaultValue) {
+     var events = Signal.constant(defaultValue);
+
+     function render(model) {
+         var b = newNode('input');
+         b.type = 'checkbox';
+         b.checked = model.checked;
+         b.style.display = 'block';
+         b.elmHandler = model.handler;
+         function change() { elm.notify(events.id, b.elmHandler(b.checked)); }
+         b.addEventListener('change', change);
+         return b;
+     }
+
+     function update(node, oldModel, newModel) {
+         node.elmHandler = newModel.handler;
+         node.checked = newModel.checked;
+         return true;
+     }
+
+     function box(handler, checked) {
+         return A3(newElement, 13, 13, {
+                     ctor: 'Custom',
+                     type: 'CheckBox',
+                     render: render,
+                     update: update,
+                     model: { checked:checked, handler:handler  }
+             });
+     }
+
+     return { _:{}, checkbox:F2(box), events:events };
+ }
+
+ function setRange(node, start, end, dir) {
+     if (node.parentNode) {
+         node.setSelectionRange(start, end, dir);
+     } else {
+         setTimeout(function(){node.setSelectionRange(start, end, dir);}, 0);
+     }
+ }
+
+ function mkTextPool(type) { return function fields(defaultValue) {
+     var events = Signal.constant(defaultValue);
+
+     var state = null;
+
+     function render(model) {
+         var field = newNode('input');
+         field.elmHandler = model.handler;
+
+         field.id = 'test';
+         field.type = type;
+         field.placeholder = JS.fromString(model.placeHolder);
+         field.value = JS.fromString(model.state.string);
+         setRange(field, model.state.selectionStart, model.state.selectionEnd, 'forward');
+         field.style.border = 'none';
+         state = model.state;
+
+         function update() {
+             var start = field.selectionStart,
+                 end = field.selectionEnd;
+             if (field.selectionDirection === 'backward') {
+                 start = end;
+                 end = field.selectionStart;
+             }
+             state = { _:{},
+                       string:JS.toString(field.value),
+                       selectionStart:start,
+                       selectionEnd:end };
+             elm.notify(events.id, field.elmHandler(state));
+         }
+         function mousedown() {
+             update();
+             elm.node.addEventListener('mouseup', mouseup);
+         }
+         function mouseup() {
+             update();
+             elm.node.removeEventListener('mouseup', mouseup)
+         }
+         field.addEventListener('keyup', update);
+         field.addEventListener('mousedown', mousedown);
+
+         return field;
+     }
+
+     function update(node, oldModel, newModel) {
+         node.elmHandler = newModel.handler;
+         if (state === newModel.state) return;
+         var newStr = JS.fromString(newModel.state.string);
+         if (node.value !== newStr) node.value = newStr;
+
+         var start = newModel.state.selectionStart;
+         var end = newModel.state.selectionEnd;
+         var direction = 'forward';
+         if (end < start) {
+             start = end;
+             end = newModel.state.selectionStart;
+             direction = 'backward';
+         }
+ 
+         if (node.selectionStart !== start
+             || node.selectionEnd !== end
+             || node.selectionDirection !== direction) {
+             setRange(node, start, end, direction);
+         }
+     }
+
+     function field(handler, placeHolder, state) {
+         return A3(newElement, 200, 30,
+                   { ctor: 'Custom',
+                     type: type + 'Input',
+                     render: render,
+                     update: update,
+                     model: { handler:handler,
+                              placeHolder:placeHolder,
+                              state:state }
+                   });
+     }
+
+     return { _:{}, field:F3(field), events:events };
+   }
+ }
+
+ return elm.Native.Graphics.Input = {
+     buttons:buttons,
+     customButtons:customButtons,
+     hoverables:hoverables,
+     checkboxes:checkboxes,
+     fields:mkTextPool('text'),
+     emails:mkTextPool('email'),
+     passwords:mkTextPool('password'),
+     dropDown:dropDown
+ };
+
+};
+
+Elm.Native.Http = function(elm) {
+  'use strict';
+  elm.Native = elm.Native || {};
+  if (elm.Native.Http) return elm.Native.Http;
+
+
+  var JS = Elm.JavaScript(elm);
+  var List = Elm.List(elm);
+  var Signal = Elm.Signal(elm);
+
+
+  function registerReq(queue,responses) { return function(req) {
+    if (req.url.ctor !== '[]') { sendReq(queue,responses,req); }
+   };
+  }
+
+  function updateQueue(queue,responses) {
+    if (queue.length > 0) {
+      elm.notify(responses.id, queue[0].value);
+      if (queue[0].value.ctor !== 'Waiting') {
+        queue.shift();
+        setTimeout(function() { updateQueue(queue,responses); }, 0);
+      }
+    }
+  }
+
+  function setHeader(pair) {
+    request.setRequestHeader( JS.fromString(pair._0), JS.fromString(pair._1) );
+  }
+
+  function sendReq(queue,responses,req) {
+    var response = { value: { ctor:'Waiting' } };
+    queue.push(response);
+
+    var request = null;
+    if (window.ActiveXObject)  { request = new ActiveXObject("Microsoft.XMLHTTP"); }
+    if (window.XMLHttpRequest) { request = new XMLHttpRequest(); }
+    request.onreadystatechange = function(e) {
+      if (request.readyState === 4) {
+        response.value = (request.status >= 200 && request.status < 300 ?
+        { ctor:'Success', _0:JS.toString(request.responseText) } :
+        { ctor:'Failure', _0:request.status, _1:JS.toString(request.statusText) });
+        setTimeout(function() { updateQueue(queue,responses); }, 0);
+      }
+    };
+    request.open(JS.fromString(req.verb), JS.fromString(req.url), true);
+    List.map(setHeader)(req.headers);
+    request.send(JS.fromString(req.body));
+  }
+
+  function send(requests) {
+    var responses = Signal.constant(elm.Http.Waiting);
+    var sender = A2( Signal.lift, registerReq([],responses), requests );
+    function f(x) { return function(y) { return x; } }
+    return A3( Signal.lift2, f, responses, sender );
+  }
+
+  return elm.Native.Http = {send:send};
+
+};
+
+Elm.Native.Keyboard = function(elm) {
+  'use strict';
+  elm.Native = elm.Native || {};
+  if (elm.Native.Keyboard) return elm.Native.Keyboard;
+
+  var Signal = Elm.Signal(elm);
+  var NList = Elm.Native.List(elm);
+
+  var keysDown = Signal.constant(NList.Nil);
+  var lastKey = Signal.constant('\0');
+
+  elm.addListener([keysDown.id], document, 'keydown', function down(e) {
+          if (NList.member(e.keyCode)(keysDown.value)) return;
+          elm.notify(keysDown.id, NList.Cons(e.keyCode, keysDown.value));
+      });
+  elm.addListener([keysDown.id], document, 'keyup', function up(e) {
+          function notEq(kc) { return kc !== e.keyCode; }
+          elm.notify(keysDown.id, NList.filter(notEq)(keysDown.value));
+      });
+  elm.addListener([keysDown.id], document, 'blur', function blur(e) {
+          elm.notify(keysDown.id, NList.Nil);
+      });
+  elm.addListener([lastKey.id], document, 'keypress', function press(e) {
+          elm.notify(lastKey.id, e.charCode || e.keyCode);
+      });
+
+  function keySignal(f) {
+    var signal = Signal.dropRepeats(A2(Signal.lift, f, keysDown));
+    keysDown.defaultNumberOfKids += 1;
+    signal.defaultNumberOfKids = 0;
+    return signal;
+  }
+
+  function dir(up, down, left, right) {
+    function f(ks) {
+      var x = 0, y = 0;
+      while (ks.ctor === "::") {
+        switch (ks._0) {
+          case left : --x; break;
+          case right: ++x; break;
+          case up   : ++y; break;
+          case down : --y; break;
+        }
+        ks = ks._1;
+      }
+      return { _:{}, x:x, y:y };
+    }
+    return keySignal(f);
+  }
+
+  function is(key) { return keySignal(NList.member(key)); }
+
+  return elm.Native.Keyboard = {
+      isDown:is,
+      directions:F4(dir),
+      keysDown:keysDown,
+      lastPressed:lastKey
+  };
+
+};
+
+Elm.Native.Mouse = function(elm) {
+  'use strict';
+  elm.Native = elm.Native || {};
+  if (elm.Native.Mouse) return elm.Native.Mouse;
+
+  var Signal = Elm.Signal(elm);
+  var Utils = Elm.Native.Utils(elm);
+
+  var position  = Signal.constant(Utils.Tuple2(0,0));
+  position.defaultNumberOfKids = 2;
+
+  // do not move x and y into Elm. By setting their default number
+  // of kids, it is possible to detatch the mouse listeners if
+  // they are not needed.
+  var x = A2( Signal.lift, function(p){return p._0}, position);
+  x.defaultNumberOfKids = 0;
+  var y = A2( Signal.lift, function(p){return p._1}, position);
+  y.defaultNumberOfKids = 0;
+
+  var isDown    = Signal.constant(false);
+  var isClicked = Signal.constant(false);
+  var clicks = Signal.constant(Utils.Tuple0);
+
+  function getXY(e) {
+    var posx = 0;
+    var posy = 0;
+    if (!e) e = window.event;
+    if (e.pageX || e.pageY) {
+	posx = e.pageX;
+	posy = e.pageY;
+    } else if (e.clientX || e.clientY) 	{
+	posx = e.clientX + document.body.scrollLeft +
+	  document.documentElement.scrollLeft;
+	posy = e.clientY + document.body.scrollTop +
+	  document.documentElement.scrollTop;
+    }
+    return Utils.Tuple2(posx-elm.node.offsetX, posy-elm.node.offsetY);
   }
 
   var node = elm.display === ElmRuntime.Display.FULLSCREEN ? document : elm.node;
 
-  function start(e) {
-    dict.insert(e.identifier,
-                {x: e.pageX - elm.node.offsetX,
-                 y: e.pageY - elm.node.offsetY,
-                 t: Date.now()});
-  }
-  function end(e) {
-    var t = dict.remove(e.identifier);
-    if (Date.now() - t.t < tapTime) {
-        hasTap = true;
-        tap = {_:{}, x:t.x, y:t.y};
-    }
-  }
-
-  function listen(name, f) {
-    function update(e) {
-      for (var i = e.changedTouches.length; i--; ) { f(e.changedTouches[i]); }
-      var ts = new Array(e.touches.length);
-      for (var i = e.touches.length; i--; ) { ts[i] = touch(e.touches[i]); }
-      var hasListener = elm.notify(root.id, ts);
-      if (!hasListener) return node.removeEventListener(name, update);
-      e.preventDefault();
-    }
-    node.addEventListener(name, update);
-  }
-
-  listen("touchstart", start);
-  listen("touchmove", function(_){});
-  listen("touchend", end);
-  listen("touchcancel", end);
-  listen("touchleave", end);
-
-  var mouseID = -1;
-  function move(e) {
-      for (var i = root.value.length; i--; ) {
-          if (root.value[i].id === mouseID) {
-              root.value[i].x = e.pageX - elm.node.offsetX;
-              root.value[i].y = e.pageY - elm.node.offsetY;
-              elm.notify(root.id, root.value);
-              break;
-          }
-      }
-  }
-  node.addEventListener("mousedown", function(e) {
-          node.addEventListener("mousemove", move);
-          e.identifier = mouseID;
-          start(e);
-          root.value.push(touch(e));
-          elm.notify(root.id, root.value);
+  elm.addListener([isClicked.id, clicks.id], node, 'click', function click() {
+          elm.notify(isClicked.id, true);
+          elm.notify(clicks.id, Utils.Tuple0);
+          elm.notify(isClicked.id, false);
       });
-  node.addEventListener("mouseup", function(e) {
-          node.removeEventListener("mousemove", move);
-          e.identifier = mouseID;
-          end(e);
-          for (var i = root.value.length; i--; ) {
-              if (root.value[i].id === mouseID) {
-                  root.value.splice(i, 1);
-                  --mouseID;
-                  break;
-              }
-          }
-          elm.notify(root.id, root.value);
+  elm.addListener([isDown.id], node, 'mousedown', function down() {
+          elm.notify(isDown.id, true);
       });
-  node.addEventListener("blur", function() {
-          node.removeEventListener("mousemove", move);
-          if (root.values.length > 0) {
-              elm.notify(root.id, []);
-              --mouseID;
-          }
-          dict.clear();
+  elm.addListener([isDown.id], node, 'mouseup', function up() {
+          elm.notify(isDown.id, false);
+      });
+  elm.addListener([position.id], node, 'mousemove', function move(e) {
+          elm.notify(position.id, getXY(e));
       });
 
-  function dependency(f) {
-      var sig = A2( Signal.lift, f, root );
-      root.defaultNumberOfKids += 1;
-      sig.defaultNumberOfKids = 0;
-      return sig;
-  }
-
-  var touches = dependency(JS.toList);
-
-  var taps = function() {
-      var sig = dependency(function(_) { return tap; });
-      sig.defaultNumberOfKids = 1;
-      function pred(_) { var b = hasTap; hasTap = false; return b; }
-      var sig2 = A3( Signal.keepIf, pred, {_:{},x:0,y:0}, sig);
-      sig2.defaultNumberOfKids = 0;
-      return sig2;
-  }();
-
-  return elm.Native.Touch = { touches: touches, taps: taps };
-
+  return elm.Native.Mouse = {
+      position: position,
+      x:x,
+      y:y,
+      isClicked: isClicked,
+      isDown: isDown,
+      clicks: clicks
+  };
 };
-Elm.Native.Time = function(elm) {
+Elm.Native.Random = function(elm) {
   'use strict';
+  elm.Native = elm.Native || {};
+  if (elm.Native.Random) return elm.Native.Random;
 
   var Signal = Elm.Signal(elm);
-  var Maybe = Elm.Maybe(elm);
-  var Utils = Elm.Native.Utils(elm);
 
-  function fpsWhen(desiredFPS, isOn) {
-    var msPerFrame = 1000 / desiredFPS;
-    var prev = Date.now(), curr = prev, diff = 0, wasOn = true;
-    var ticker = Signal.constant(diff);
-    function tick(zero) { return function() {
-        curr = Date.now();
-        diff = zero ? 0 : curr - prev;
-        prev = curr;
-        elm.notify(ticker.id, diff);
-      };
-    }
-    var timeoutID = 0;
-    function f(isOn, t) {
-      if (isOn) {
-        timeoutID = setTimeout(tick(!wasOn && isOn), msPerFrame);
-      } else if (wasOn) {
-        clearTimeout(timeoutID);
-      }
-      wasOn = isOn;
-      return t;
-    }
-    return A3( Signal.lift2, F2(f), isOn, ticker );
+  function range(min, max, signal) {
+    function f(x) { return Math.floor(Math.random() * (max-min+1)) + min; }
+    return A2( Signal.lift, f, signal );
   }
 
-  function everyWhen(t, isOn) {
-    var clock = Signal.constant(Date.now());
-    function tellTime() { elm.notify(clock.id, Date.now()); }
-    setInterval(tellTime, t);
-    return clock;
+  function flt(signal) {
+    function f(x) { return Math.random(); }
+    return A2( Signal.lift, f, signal );
   }
 
-  function since(t, s) {
-    function cmp(a,b) { return !Utils.eq(a,b); }
-    var dcount = Signal.count(A2(Signal.delay, t, s));
-    return A3( Signal.lift2, F2(cmp), Signal.count(s), dcount );
-  }
-  function read(s) {
-      var t = Date.parse(s);
-      return isNaN(t) ? Maybe.Nothing : Maybe.Just(t);
-  }
-  return elm.Native.Time = {
-      fpsWhen : F2(fpsWhen),
-      fps : function(t) { return fpsWhen(t, Signal.constant(true)); },
-      every : function(t) { return everyWhen(t, Signal.constant(true)) },
-      delay : Signal.delay,
-      timestamp : Signal.timestamp,
-      since : F2(since),
-      toDate : function(t) { return new window.Date(t); },
-      read   : read
-  };
+  elm.Native.Random = { range: F3(range) };
+  elm.Native.Random['float'] = flt;
+  return elm.Native.Random;
 
 };
 
@@ -1688,7 +1990,7 @@ Elm.Native.Signal = function(elm) {
   elm.Native = elm.Native || {};
   if (elm.Native.Signal) return elm.Native.Signal;
 
-  var Utils  = Elm.Native.Utils(elm);
+  var Utils = Elm.Native.Utils(elm);
   var foldl1 = Elm.List(elm).foldl1;
 
   function send(node, timestep, changed) {
@@ -1767,13 +2069,22 @@ Elm.Native.Signal = function(elm) {
     return new LiftN(update, [a,b,c,d,e,f,g,h]);
   }
 
-  function foldp(func,state,input) {
-    var first = true;
-    function update() {
-        first ? first = false : state = A2(func, input.value, state);
-        return state;
-    }
-    return new LiftN(update, [input]);
+  function Foldp(step, state, input) {
+    this.id = Utils.guid();
+    this.value = state;
+    this.kids = [];
+
+    this.recv = function(timestep, changed, parentID) {
+      if (changed) {
+          this.value = A2( step, input.value, this.value );
+      }
+      send(this, timestep, changed);
+    };
+    input.kids.push(this);
+  }
+
+  function foldp(step, state, input) {
+      return new Foldp(step, state, input);
   }
 
   function DropIf(pred,base,input) {
@@ -1907,2429 +2218,2798 @@ Elm.Native.Signal = function(elm) {
   };
 };
 
-Elm.Native.Random = function(elm) {
+Elm.Native.Time = function(elm) {
   'use strict';
-  elm.Native = elm.Native || {};
-  if (elm.Native.Random) return elm.Native.Random;
 
   var Signal = Elm.Signal(elm);
+  var NS = Elm.Native.Signal(elm);
+  var Maybe = Elm.Maybe(elm);
+  var Utils = Elm.Native.Utils(elm);
 
-  function range(min, max, signal) {
-    function f(x) { return Math.floor(Math.random() * (max-min+1)) + min; }
-    return A2( Signal.lift, f, signal );
+  function fpsWhen(desiredFPS, isOn) {
+    var msPerFrame = 1000 / desiredFPS;
+    var prev = Date.now(), curr = prev, diff = 0, wasOn = true;
+    var ticker = Signal.constant(diff);
+    function tick(zero) { return function() {
+        curr = Date.now();
+        diff = zero ? 0 : curr - prev;
+        prev = curr;
+        elm.notify(ticker.id, diff);
+      };
+    }
+    var timeoutID = 0;
+    function f(isOn, t) {
+      if (isOn) {
+        timeoutID = setTimeout(tick(!wasOn && isOn), msPerFrame);
+      } else if (wasOn) {
+        clearTimeout(timeoutID);
+      }
+      wasOn = isOn;
+      return t;
+    }
+    return A3( Signal.lift2, F2(f), isOn, ticker );
   }
 
-  function flt(signal) {
-    function f(x) { return Math.random(); }
-    return A2( Signal.lift, f, signal );
+  function everyWhen(t, isOn) {
+    var clock = Signal.constant(Date.now());
+    var id = setInterval(function tellTime() {
+            if (!elm.notify(clock.id, Date.now())) {
+                clearInterval(id);
+            }
+        }, t);
+    return clock;
   }
 
-  elm.Native.Random = { range: F3(range) };
-  elm.Native.Random['float'] = flt;
-  return elm.Native.Random;
+  function since(t, s) {
+    function cmp(a,b) { return !Utils.eq(a,b); }
+    var dcount = Signal.count(A2(NS.delay, t, s));
+    return A3( Signal.lift2, F2(cmp), Signal.count(s), dcount );
+  }
+  function read(s) {
+      var t = Date.parse(s);
+      return isNaN(t) ? Maybe.Nothing : Maybe.Just(t);
+  }
+  return elm.Native.Time = {
+      fpsWhen : F2(fpsWhen),
+      fps : function(t) { return fpsWhen(t, Signal.constant(true)); },
+      every : function(t) { return everyWhen(t, Signal.constant(true)) },
+      delay : NS.delay,
+      timestamp : NS.timestamp,
+      since : F2(since),
+      toDate : function(t) { return new window.Date(t); },
+      read   : read
+  };
 
 };
 
-Elm.Native.Mouse = function(elm) {
+Elm.Native.Touch = function(elm) {
   'use strict';
+
   elm.Native = elm.Native || {};
-  if (elm.Native.Mouse) return elm.Native.Mouse;
+  if (elm.Native.Touch) return elm.Native.Touch;
 
   var Signal = Elm.Signal(elm);
-  var Utils = Elm.Native.Utils(elm);
+  var JS = Elm.JavaScript(elm);
+  var _ = Elm.Native.Utils(elm);
 
-  var position  = Signal.constant(Utils.Tuple2(0,0));
-  position.defaultNumberOfKids = 2;
+  function Dict() {
+    this.keys = [];
+    this.values = [];
 
-  // do not move x and y into Elm. By setting their default number
-  // of kids, it is possible to detatch the mouse listeners if
-  // they are not needed.
-  var x = A2( Signal.lift, function(p){return p._0}, position);
-  x.defaultNumberOfKids = 0;
-  var y = A2( Signal.lift, function(p){return p._1}, position);
-  y.defaultNumberOfKids = 0;
+    this.insert = function(key,value) {
+      this.keys.push(key);
+      this.values.push(value);
+    };
+    this.lookup = function(key) {
+      var i = this.keys.indexOf(key)
+      return i >= 0 ? this.values[i] : {x:0,y:0,t:0};
+    };
+    this.remove = function(key) {
+      var i = this.keys.indexOf(key);
+      if (i < 0) return;
+      var t = this.values[i];
+      this.keys.splice(i,1);
+      this.values.splice(i,1);
+      return t;
+    };
+    this.clear = function() {
+        this.keys = [];
+        this.values = [];
+    };
+  }
+  
+  var root = Signal.constant([]),
+      tapTime = 500,
+      hasTap = false,
+      tap = {_:{},x:0,y:0},
+      dict = new Dict();
 
-  var isDown    = Signal.constant(false);
-  var isClicked = Signal.constant(false);
-  var clicks = Signal.constant(Utils.Tuple0);
-
-  function getXY(e) {
-    var posx = 0;
-    var posy = 0;
-    if (!e) e = window.event;
-    if (e.pageX || e.pageY) {
-	posx = e.pageX;
-	posy = e.pageY;
-    } else if (e.clientX || e.clientY) 	{
-	posx = e.clientX + document.body.scrollLeft +
-	  document.documentElement.scrollLeft;
-	posy = e.clientY + document.body.scrollTop +
-	  document.documentElement.scrollTop;
-    }
-    return Utils.Tuple2(posx-elm.node.offsetX, posy-elm.node.offsetY);
+  function touch(t) {
+      var r = dict.lookup(t.identifier);
+      return {_ : {},
+	      id: t.identifier,
+	      x : t.pageX - elm.node.offsetX,
+	      y : t.pageY - elm.node.offsetY,
+	      x0: r.x,
+	      y0: r.y,
+	      t0: r.t
+	      };
   }
 
   var node = elm.display === ElmRuntime.Display.FULLSCREEN ? document : elm.node;
 
-  function click(e) {
-    var hasListener1 = elm.notify(isClicked.id, true);
-    var hasListener2 = elm.notify(clicks.id, Utils.Tuple0);
-    elm.notify(isClicked.id, false);
-    if (!hasListener1 && !hasListener2)
-	node.removeEventListener('click', click);
+  function start(e) {
+    dict.insert(e.identifier,
+                {x: e.pageX - elm.node.offsetX,
+                 y: e.pageY - elm.node.offsetY,
+                 t: Date.now()});
+  }
+  function end(e) {
+    var t = dict.remove(e.identifier);
+    if (Date.now() - t.t < tapTime) {
+        hasTap = true;
+        tap = {_:{}, x:t.x, y:t.y};
+    }
   }
 
-  function down(e) {
-    var hasListener = elm.notify(isDown.id, true);
-    if (!hasListener) node.removeEventListener('mousedown', down);
+  function listen(name, f) {
+    function update(e) {
+      for (var i = e.changedTouches.length; i--; ) { f(e.changedTouches[i]); }
+      var ts = new Array(e.touches.length);
+      for (var i = e.touches.length; i--; ) { ts[i] = touch(e.touches[i]); }
+      elm.notify(root.id, ts);
+      e.preventDefault();
+    }
+    elm.addListener([root.id], node, name, update);
   }
 
-  function up(e) {
-    var hasListener = elm.notify(isDown.id, false);
-    if (!hasListener) node.removeEventListener('mouseup', up);
-  }
+  listen("touchstart", start);
+  listen("touchmove", function(_){});
+  listen("touchend", end);
+  listen("touchcancel", end);
+  listen("touchleave", end);
 
+  var mouseID = -1;
   function move(e) {
-    var hasListener = elm.notify(position.id, getXY(e));
-    if (!hasListener) node.removeEventListener('mousemove', move);
+      for (var i = root.value.length; i--; ) {
+          if (root.value[i].id === mouseID) {
+              root.value[i].x = e.pageX - elm.node.offsetX;
+              root.value[i].y = e.pageY - elm.node.offsetY;
+              elm.notify(root.id, root.value);
+              break;
+          }
+      }
+  }
+  elm.addListener([root.id], node, "mousedown", function down(e) {
+          node.addEventListener("mousemove", move);
+          e.identifier = mouseID;
+          start(e);
+          root.value.push(touch(e));
+          elm.notify(root.id, root.value);
+      });
+  elm.addListener([root.id], node, "mouseup", function up(e) {
+          node.removeEventListener("mousemove", move);
+          e.identifier = mouseID;
+          end(e);
+          for (var i = root.value.length; i--; ) {
+              if (root.value[i].id === mouseID) {
+                  root.value.splice(i, 1);
+                  --mouseID;
+                  break;
+              }
+          }
+          elm.notify(root.id, root.value);
+      });
+  elm.addListener([root.id], node, "blur", function blur(e) {
+          node.removeEventListener("mousemove", move);
+          if (root.values.length > 0) {
+              elm.notify(root.id, []);
+              --mouseID;
+          }
+          dict.clear();
+      });
+
+  function dependency(f) {
+      var sig = A2( Signal.lift, f, root );
+      root.defaultNumberOfKids += 1;
+      sig.defaultNumberOfKids = 0;
+      return sig;
   }
 
-  node.addEventListener('click'    , click);
-  node.addEventListener('mousedown', down);
-  node.addEventListener('mouseup'  , up);
-  node.addEventListener('mousemove', move);
+  var touches = dependency(JS.toList);
 
-  return elm.Native.Mouse = {
-      position: position,
-      x:x,
-      y:y,
-      isClicked: isClicked,
-      isDown: isDown,
-      clicks: clicks
-  };
+  var taps = function() {
+      var sig = dependency(function(_) { return tap; });
+      sig.defaultNumberOfKids = 1;
+      function pred(_) { var b = hasTap; hasTap = false; return b; }
+      var sig2 = A3( Signal.keepIf, pred, {_:{},x:0,y:0}, sig);
+      sig2.defaultNumberOfKids = 0;
+      return sig2;
+  }();
+
+  return elm.Native.Touch = { touches: touches, taps: taps };
+
 };
-Elm.Native.Keyboard = function(elm) {
+Elm.Native.WebSocket = function(elm) {
   'use strict';
+
   elm.Native = elm.Native || {};
-  if (elm.Native.Keyboard) return elm.Native.Keyboard;
+  if (elm.Native.WebSocket) return elm.Native.WebSocket;
 
   var Signal = Elm.Signal(elm);
-  var NList = Elm.Native.List(elm);
-
-  var keysDown = Signal.constant(NList.Nil);
-  var lastKey = Signal.constant('\0');
-
-  function down(e) {
-      if (NList.member(e.keyCode)(keysDown.value)) return;
-      var list = NList.Cons(e.keyCode, keysDown.value);
-      var hasListener = elm.notify(keysDown.id, list);
-      if (!hasListener) document.removeEventListener('keydown', down);
-  }
-  function up(e) {
-      function notEq(kc) { return kc !== e.keyCode; }
-      var codes = NList.filter(notEq)(keysDown.value);
-      var hasListener = elm.notify(keysDown.id, codes);
-      if (!hasListener) document.removeEventListener('keyup', up);
-  }
-  function blur(e) {
-      var hasListener = elm.notify(keysDown.id, NList.Nil);
-      if (!hasListener) document.removeEventListener('blur', blur);
-  }
-  function press(e) {
-      var hasListener = elm.notify(lastKey.id, e.charCode || e.keyCode);
-      if (!hasListener) document.removeEventListener('keypress', press);
-  }
-
-  document.addEventListener('keydown' , down );
-  document.addEventListener('keyup'   , up   );
-  document.addEventListener('blur'    , blur );
-  document.addEventListener('keypress', press);
-
-  function keySignal(f) {
-    var signal = A2( Signal.lift, f, keysDown );
-    keysDown.defaultNumberOfKids += 1;
-    signal.defaultNumberOfKids = 0;
-    return signal;
-  }
-
-  function dir(up, down, left, right) {
-    function f(ks) {
-      var x = 0, y = 0;
-      while (ks.ctor == "Cons") {
-        switch (ks._0) {
-          case left : --x; break;
-          case right: ++x; break;
-          case up   : ++y; break;
-          case down : --y; break;
-        }
-        ks = ks._1;
-      }
-      return { _:{}, x:x, y:y };
-    }
-    return keySignal(f);
-  }
-
-  function is(key) { return keySignal(NList.member(key)); }
-
-  return elm.Native.Keyboard = {
-      isDown:is,
-      directions:F4(dir),
-      keysDown:keysDown,
-      lastPressed:lastKey
-  };
-
-};
-
-Elm.Native.Http = function(elm) {
-  'use strict';
-  elm.Native = elm.Native || {};
-  if (elm.Native.Http) return elm.Native.Http;
-
-
   var JS = Elm.JavaScript(elm);
-  var List = Elm.List(elm);
-  var Signal = Elm.Signal(elm);
+  var List = Elm.Native.List(elm);
 
+  function open(url, outgoing) {
+    var incoming = Signal.constant(List.Nil);
+    var ws = new WebSocket(JS.fromString(url));
 
-  function registerReq(queue,responses) { return function(req) {
-    if (req.url.ctor !== 'Nil') { sendReq(queue,responses,req); }
-   };
-  }
-
-  function updateQueue(queue,responses) {
-    if (queue.length > 0) {
-      elm.notify(responses.id, queue[0].value);
-      if (queue[0].value.ctor !== 'Waiting') {
-        queue.shift();
-        setTimeout(function() { updateQueue(queue,responses); }, 0);
-      }
-    }
-  }
-
-  function setHeader(pair) {
-    request.setRequestHeader( JS.fomString(pair._0), JS.fromString(pair._1) );
-  }
-
-  function sendReq(queue,responses,req) {
-    var response = { value: { ctor:'Waiting' } };
-    queue.push(response);
-
-    var request = null;
-    if (window.ActiveXObject)  { request = new ActiveXObject("Microsoft.XMLHTTP"); }
-    if (window.XMLHttpRequest) { request = new XMLHttpRequest(); }
-    request.onreadystatechange = function(e) {
-      if (request.readyState === 4) {
-        response.value = (request.status >= 200 && request.status < 300 ?
-        { ctor:'Success', _0:JS.toString(request.responseText) } :
-        { ctor:'Failure', _0:request.status, _1:JS.toString(request.statusText) });
-        setTimeout(function() { updateQueue(queue,responses); }, 0);
-      }
+    var pending = [];
+    var ready = false;
+    
+    ws.onopen = function(e) {
+      var len = pending.length;
+      for (var i = 0; i < len; ++i) { ws.send(pending[i]); }
+      ready = true;
     };
-    request.open(JS.fromString(req.verb), JS.fromString(req.url), true);
-    List.map(setHeader)(req.headers);
-    request.send(JS.fromString(req.body));
+    ws.onmessage = function(event) {
+      elm.notify(incoming.id, JS.toString(event.data));
+    };
+    
+    function send(msg) {
+      var s = JS.fromString(msg);
+      ready ? ws.send(s) : pending.push(s);
+    }
+    
+    function take1(x,y) { return x }
+    return A3(Signal.lift2, F2(take1), incoming, A2(Signal.lift, send, outgoing));
   }
 
-  function send(requests) {
-    var responses = Signal.constant(elm.Http.Waiting);
-    var sender = A2( Signal.lift, registerReq([],responses), requests );
-    function f(x) { return function(y) { return x; } }
-    return A3( Signal.lift2, f, responses, sender );
+  return elm.Native.WebSocket = { connect: F2(open) };
+};
+
+Elm.Native.Window = function(elm) {
+  'use strict';
+
+  elm.Native = elm.Native || {};
+  if (elm.Native.Window) return elm.Native.Window;
+
+  var Signal = Elm.Signal(elm);
+  var Tuple2 = Elm.Native.Utils(elm).Tuple2;
+
+  function getWidth() { return elm.node.clientWidth; }
+  function getHeight() {
+      if (elm.display === ElmRuntime.Display.FULLSCREEN) {
+          return window.innerHeight;
+      }
+      return elm.node.clientHeight;
   }
 
-  return elm.Native.Http = {send:send};
+  var dimensions = Signal.constant(Tuple2(getWidth(), getHeight()));
+  dimensions.defaultNumberOfKids = 2;
+
+  // Do not move width and height into Elm. By setting the default number of kids,
+  // the resize listener can be detached.
+  var width  = A2(Signal.lift, function(p){return p._0;}, dimensions);
+  width.defaultNumberOfKids = 0;
+
+  var height = A2(Signal.lift, function(p){return p._1;}, dimensions);
+  height.defaultNumberOfKids = 0;
+
+  function resizeIfNeeded() {
+      var w = getWidth();
+      var h = getHeight();
+      if (dimensions.value._0 === w && dimensions.value._1 === h) return;
+      elm.notify(dimensions.id, Tuple2(w,h));
+  }
+  elm.addListener([dimensions.id], window, 'resize', resizeIfNeeded);
+
+  return elm.Native.Window = {
+      dimensions:dimensions,
+      width:width,
+      height:height,
+      resizeIfNeeded:resizeIfNeeded
+  };
 
 };
 
-Elm.Native.Graphics.Input = function(elm) {
- "use strict";
-
- elm.Native = elm.Native || {};
- elm.Native.Graphics = elm.Native.Graphics || {};
- if (elm.Native.Graphics.Input) return elm.Native.Graphics.Input;
-
- var Render = ElmRuntime.use(ElmRuntime.Render.Element);
- var newNode = ElmRuntime.use(ElmRuntime.Render.Utils).newElement;
-
- var Signal = Elm.Signal(elm);
- var newElement = Elm.Graphics.Element(elm).newElement;
- var JS = Elm.Native.JavaScript(elm);
- var Tuple2 = Elm.Native.Utils(elm).Tuple2;
-
- function dropDown(values) {
-     var entries = JS.fromList(values);
-     var events = Signal.constant(entries[0]._1);
-
-     var drop = newNode('select');
-     drop.style.border = '0 solid';
-     for (var i = 0; i < entries.length; ++i) {
-         var option = newNode('option');
-         var name = JS.fromString(entries[i]._0);
-         option.value = name;
-         option.innerHTML = name;
-         drop.appendChild(option);
-     }
-     drop.addEventListener('change', function() {
-             elm.notify(events.id, entries[drop.selectedIndex]._1);
-         });
-
-     var t = drop.cloneNode(true);
-     t.style.visibility = "hidden";
-
-     elm.node.appendChild(t);
-     var style = window.getComputedStyle(t, null);
-     var w = Math.ceil(style.getPropertyValue("width").slice(0,-2) - 0);
-     var h = Math.ceil(style.getPropertyValue("height").slice(0,-2) - 0);
-     elm.node.removeChild(t);
-     
-     console.log(w,h);
-     var element = A3(newElement, w, h, {
-             ctor: 'Custom',
-             type: 'DropDown',
-             render: function render(model) { return drop; },
-             update: function update(node, oldModel, newModel) {},
-             model: {}
-         });
-
-     return Tuple2(Signal.constant(element), events);
- }
-
- function buttons(defaultValue) {
-     var events = Signal.constant(defaultValue);
-
-     function render(model) {
-	 var b = newNode('button');
-	 b.style.display = 'block';
-	 b.elmEvent = model.event;
-	 function click() { elm.notify(events.id, b.elmEvent); }
-	 b.addEventListener('click', click);
-	 b.innerHTML = model.text;
-	 return b;
-     }
-
-     function update(node, oldModel, newModel) {
-	 node.elmEvent = newModel.event;
-	 var txt = newModel.text;
-	 if (oldModel.text !== txt) node.innerHTML = txt;
-     }
-
-     function button(evnt, txt) {
-	 return A3(newElement, 100, 40, {
-                     ctor: 'Custom',
-		     type: 'Button',
-		     render: render,
-		     update: update,
-		     model: { event:evnt, text:JS.fromString(txt) }
-	     });
-     }
-
-     return { _:{}, button:F2(button), events:events };
- }
-
- function customButtons(defaultValue) {
-     var events = Signal.constant(defaultValue);
-
-     function render(model) {
-	 var btn = newNode('div');
-	 btn.elmEvent = model.event;
-
-	 btn.elmUp    = Render.render(model.up);
-	 btn.elmHover = Render.render(model.hover);
-	 btn.elmDown  = Render.render(model.down);
-
-	 function replace(node) {
-           if (node !== btn.firstChild) btn.replaceChild(node, btn.firstChild);
-	 }
-	 var overCount = 0;
-	 function over(e) {
-	     if (overCount++ > 0) return;
-	     replace(btn.elmHover);
-	 }
-	 function out(e) {
-	     if (btn.contains(e.toElement || e.relatedTarget)) return;
-	     overCount = 0;
-	     replace(btn.elmUp);
-	 }
-	 function up() {
-	     replace(btn.elmHover);
-	     elm.notify(events.id, btn.elmEvent);
-	 }
-	 function down() { replace(btn.elmDown); }
-	 btn.addEventListener('mouseover', over);
-	 btn.addEventListener('mouseout' , out);
-	 btn.addEventListener('mousedown', down);
-	 btn.addEventListener('mouseup'  , up);
-
-	 btn.appendChild(btn.elmUp);
-	 return btn;
-     }
-
-     function update(node, oldModel, newModel) {
-	 node.elmEvent = newModel.event;
-	 Render.update(node.elmUp, oldModel.up, newModel.up)
-	 Render.update(node.elmHover, oldModel.hover, newModel.hover)
-	 Render.update(node.elmDown, oldModel.down, newModel.down)
-     }
-
-     function button(evnt, up, hover, down) {
-	 return A3(newElement,
-		   Math.max(up.props.width, hover.props.width, down.props.width),
-		   Math.max(up.props.height, hover.props.height, down.props.height),
-                   { ctor: 'Custom',
-		     type: 'CustomButton',
-		     render: render,
-		     update: update,
-		     model: { event:evnt, up:up, hover:hover, down:down }
-		   });
-     }
-
-     return { _:{}, customButton:F4(button), events:events };
- }
-
-
- function checkboxes(defaultValue) {
-     var events = Signal.constant(defaultValue);
-
-     function render(model) {
-	 var b = newNode('input');
-	 b.type = 'checkbox';
-	 b.checked = model.checked;
-	 b.style.display = 'block';
-	 b.elmHandler = model.handler;
-	 function change() { elm.notify(events.id, b.elmHandler(b.checked)); }
-	 b.addEventListener('change', change);
-	 return b;
-     }
-
-     function update(node, oldModel, newModel) {
-	 node.elmHandler = newModel.handler;
-	 node.checked = newModel.checked;
-	 return true;
-     }
-
-     function box(handler, checked) {
-	 return A3(newElement, 13, 13, {
-                     ctor: 'Custom',
-		     type: 'CheckBox',
-		     render: render,
-		     update: update,
-		     model: { checked:checked, handler:handler  }
-	     });
-     }
-
-     return { _:{}, box:F2(box), events:events };
- }
-
- function setRange(node, start, end, dir) {
-     if (node.parentNode) {
-         node.setSelectionRange(start, end, dir);
-     } else {
-         setTimeout(function(){node.setSelectionRange(start, end, dir);}, 0);
-     }
- }
-
- function mkTextPool(type) { return function fields(defaultValue) {
-     var events = Signal.constant(defaultValue);
-
-     var state = null;
-
-     function render(model) {
-	 var field = newNode('input');
-	 field.elmHandler = model.handler;
-
-	 field.id = 'test';
-	 field.type = type;
-	 field.placeholder = JS.fromString(model.placeHolder);
-	 field.value = JS.fromString(model.state.string);
-	 setRange(field, model.state.selectionStart, model.state.selectionEnd, 'forward');
-	 field.style.border = 'none';
-         state = model.state;
-
-	 function update() {
-	     var start = field.selectionStart,
-		 end = field.selectionEnd;
-	     if (field.selectionDirection === 'backward') {
-		 start = end;
-		 end = field.selectionStart;
-	     }
-             state = { _:{},
-                       string:JS.toString(field.value),
-                       selectionStart:start,
-                       selectionEnd:end };
-	     elm.notify(events.id, field.elmHandler(state));
-	 }
-	 function mousedown() {
-	     update();
-	     elm.node.addEventListener('mouseup', mouseup);
-	 }
-	 function mouseup() {
-	     update();
-	     elm.node.removeEventListener('mouseup', mouseup)
-	 }
-	 field.addEventListener('keyup', update);
-	 field.addEventListener('mousedown', mousedown);
-
-	 return field;
-     }
-
-     function update(node, oldModel, newModel) {
-	 node.elmHandler = newModel.handler;
-         if (state === newModel.state) return;
-         var newStr = JS.fromString(newModel.state.string);
-	 if (node.value !== newStr) node.value = newStr;
-
-         var start = newModel.state.selectionStart;
-         var end = newModel.state.selectionEnd;
-         var direction = 'forward';
-         if (end < start) {
-             start = end;
-             end = newModel.state.selectionStart;
-             direction = 'backward';
-         }
- 
-         if (node.selectionStart !== start
-             || node.selectionEnd !== end
-             || node.selectionDirection !== direction) {
-             setRange(node, start, end, direction);
-         }
-     }
-
-     function field(handler, placeHolder, state) {
-	 return A3(newElement, 200, 30,
-                   { ctor: 'Custom',
-		     type: type + 'Input',
-		     render: render,
-		     update: update,
-		     model: { handler:handler,
-			      placeHolder:placeHolder,
-			      state:state }
-		   });
-     }
-
-     return { _:{}, field:F3(field), events:events };
-   }
- }
-
- return elm.Native.Graphics.Input = {
-     buttons:buttons,
-     customButtons:customButtons,
-     checkboxes:checkboxes,
-     fields:mkTextPool('text'),
-     emails:mkTextPool('email'),
-     passwords:mkTextPool('password'),
-     dropDown:dropDown
- };
-
-};
-
-Elm.Native.Graphics.Collage = function(elm) {
- "use strict";
-
- elm.Native = elm.Native || {};
- elm.Native.Graphics = elm.Native.Graphics || {};
- if (elm.Native.Graphics.Collage) return elm.Native.Graphics.Collage;
-
- var newElement = Elm.Graphics.Element(elm).newElement;
- var C = ElmRuntime.use(ElmRuntime.Render.Collage);
-
- function collage(w,h,forms) {
-     return A3(newElement, w, h, {
-                 ctor: 'Custom',
-		 type: 'Collage',
-		 render: C.render,
-		 update: C.update,
-		 model: {w:w, h:h, forms:forms}
-	 });
- }
- return elm.Native.Graphics.Collage = { collage:F3(collage) };
-
-};
-Elm.Window = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var W = Elm.Native.Window(elm);
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Window||{};
-  _.$op = {}
-  return elm.Window = _;
-  };
-Elm.WebSocket = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var WS = Elm.Native.WebSocket(elm);
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.WebSocket||{};
-  _.$op = {}
-  return elm.WebSocket = _;
-  };
-Elm.Touch = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var T = Elm.Native.Touch(elm);
-  var Touch_0 = F6(function(x_1, y_2, id_3, x0_4, y0_5, t0_6){
-    return {
-      _:{
-      },
-      id:id_3,
-      t0:t0_6,
-      x:x_1,
-      x0:x0_4,
-      y:y_2,
-      y0:y0_5};});
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Touch||{};
-  _.$op = {};
-  _.Touch = Touch_0
-  return elm.Touch = _;
-  };
-Elm.Time = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var T = Elm.Native.Time(elm);
-  var inMilliseconds_4 = function(t_8){
-    return t_8;};
-  var inSeconds_5 = function(t_9){
-    return (t_9/second_1);};
-  var inMinutes_6 = function(t_10){
-    return (t_10/minute_2);};
-  var inHours_7 = function(t_11){
-    return (t_11/hour_3);};
-  var millisecond_0 = 1;
-  var second_1 = (1000*millisecond_0);
-  var minute_2 = (60*second_1);
-  var hour_3 = (60*minute_2);
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Time||{};
-  _.$op = {};
-  _.millisecond = millisecond_0;
-  _.second = second_1;
-  _.minute = minute_2;
-  _.hour = hour_3;
-  _.inMilliseconds = inMilliseconds_4;
-  _.inSeconds = inSeconds_5;
-  _.inMinutes = inMinutes_6;
-  _.inHours = inHours_7
-  return elm.Time = _;
-  };
-Elm.Text = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var T = Elm.Native.Text(elm);
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Text||{};
-  _.$op = {}
-  return elm.Text = _;
-  };
-Elm.Signal = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var S = Elm.Native.Signal(elm);
-  var L = Elm.List(elm);
-  var combine_0 = A2(L.foldr, S.lift2(function(x_1){
-    return function(y_2){
-      return _L.Cons(x_1,y_2);};}), S.constant(_L.Nil));
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Signal||{};
-  _.$op = {};
-  _.combine = combine_0
-  return elm.Signal = _;
-  };
-Elm.Set = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var Dict = Elm.Dict(elm);
+Elm.Automaton = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Automaton';
+  var Basics = Elm.Basics(elm);
+  var Signal = Elm.Signal(elm);
   var List = Elm.List(elm);
-  var singleton_1 = function(k_13){
-    return A2(Dict.singleton, k_13, {ctor:"Tuple0"});};
-  var insert_2 = function(k_14){
-    return A2(Dict.insert, k_14, {ctor:"Tuple0"});};
-  var fromList_9 = function(xs_15){
-    return A3(List.foldl, insert_2, empty_0, xs_15);};
-  var foldl_10 = F3(function(f_16, b_17, s_18){
-    return A3(Dict.foldl, function(k_19){
-      return function(__20){
-        return function(b_21){
-          return A2(f_16, k_19, b_21);};};}, b_17, s_18);});
-  var foldr_11 = F3(function(f_22, b_23, s_24){
-    return A3(Dict.foldr, function(k_25){
-      return function(__26){
-        return function(b_27){
-          return A2(f_22, k_25, b_27);};};}, b_23, s_24);});
-  var map_12 = F2(function(f_28, s_29){
-    return fromList_9(A2(List.map, f_28, toList_8(s_29)));});
-  var empty_0 = Dict.empty;
-  var remove_3 = Dict.remove;
-  var member_4 = Dict.member;
-  var union_5 = Dict.union;
-  var intersect_6 = Dict.intersect;
-  var diff_7 = Dict.diff;
-  var toList_8 = Dict.keys;
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Set||{};
-  _.$op = {};
-  _.empty = empty_0;
-  _.singleton = singleton_1;
-  _.insert = insert_2;
-  _.remove = remove_3;
-  _.member = member_4;
-  _.union = union_5;
-  _.intersect = intersect_6;
-  _.diff = diff_7;
-  _.toList = toList_8;
-  _.fromList = fromList_9;
-  _.foldl = foldl_10;
-  _.foldr = foldr_11;
-  _.map = map_12
-  return elm.Set = _;
-  };
-Elm.Random = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var R = Elm.Native.Random(elm);
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Random||{};
-  _.$op = {}
-  return elm.Random = _;
-  };
-Elm.Prelude = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var N = Elm.Native.Prelude(elm);
-  var LT_5 = {ctor:"LT"};
-  var EQ_6 = {ctor:"EQ"};
-  var GT_7 = {ctor:"GT"};
-  var radians_0 = function(t_9){
-    return t_9;};
-  var degrees_1 = function(d_10){
-    return ((d_10*Math.PI)/180);};
-  var turns_2 = function(r_11){
-    return ((2*Math.PI)*r_11);};
-  var fromPolar_3 = function(_22000_12){
-    return function(){ 
-    switch (_22000_12.ctor) {
-      case 'Tuple2':
-        return {ctor:"Tuple2", _0:(_22000_12._0*N.cos(_22000_12._1)), _1:(_22000_12._0*N.sin(_22000_12._1))};
-    }_E.Case('Line 22, Column 20') }();};
-  var toPolar_4 = function(_27000_15){
-    return function(){ 
-    switch (_27000_15.ctor) {
-      case 'Tuple2':
-        return {ctor:"Tuple2", _0:N.sqrt((Math.pow(_27000_15._0,2)+Math.pow(_27000_15._1,2))), _1:A2(N.atan2, _27000_15._1, _27000_15._0)};
-    }_E.Case('Line 27, Column 18') }();};
-  var otherwise_8 = true;
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Prelude||{};
-  _.$op = {};
-  _.radians = radians_0;
-  _.degrees = degrees_1;
-  _.turns = turns_2;
-  _.fromPolar = fromPolar_3;
-  _.toPolar = toPolar_4;
-  _.LT = LT_5;
-  _.EQ = EQ_6;
-  _.GT = GT_7;
-  _.otherwise = otherwise_8
-  return elm.Prelude = _;
-  };
-Elm.Mouse = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var M = Elm.Native.Mouse(elm);
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Mouse||{};
-  _.$op = {}
-  return elm.Mouse = _;
-  };
-Elm.Maybe = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var List = Elm.List(elm);
-  var Just_0 = function(a1){
-    return {ctor:"Just", _0:a1};};
-  var Nothing_1 = {ctor:"Nothing"};
-  var maybe_2 = F3(function(b_7, f_8, m_9){
-    return function(){ 
-    switch (m_9.ctor) {
-      case 'Just':
-        return f_8(m_9._0);
-      case 'Nothing':
-        return b_7;
-    }_E.Case('Line 13, Column 15') }();});
-  var cons_5 = F2(function(mx_12, xs_13){
-    return A3(maybe_2, xs_13, function(x_14){
-      return _L.Cons(x_14,xs_13);}, mx_12);});
-  var isJust_3 = A2(maybe_2, false, function(__11){
-    return true;});
-  var isNothing_4 = function(x){
-    return not(isJust_3(x));};
-  var justs_6 = A2(List.foldr, cons_5, _L.Nil);
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Maybe||{};
-  _.$op = {};
-  _.Just = Just_0;
-  _.Nothing = Nothing_1;
-  _.maybe = maybe_2;
-  _.isJust = isJust_3;
-  _.isNothing = isNothing_4;
-  _.cons = cons_5;
-  _.justs = justs_6
-  return elm.Maybe = _;
-  };
-Elm.Matrix2D = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var M = Elm.Native.Matrix2D(elm);
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Matrix2D||{};
-  _.$op = {}
-  return elm.Matrix2D = _;
-  };
-Elm.List = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var _ = Elm.Native.Utils(elm); var Native = Native||{};Native.Utils = _;
-  var min = _.min, max = _.max;
-  var L = Elm.Native.List(elm);
-  var concatMap_0 = function(f_8){
-    return function(x){
-      return L.concat(A2(L.map, f_8, x));};};
-  var partition_5 = F2(function(pred_13, lst_14){
-    return function(){ 
-    switch (lst_14.ctor) {
-      case 'Cons':
-        return function(){
-          var _106000_17 = A2(partition_5, pred_13, lst_14._1);
-          var bs_18 = function(){ 
-          switch (_106000_17.ctor) {
-            case 'Tuple2':
-              return _106000_17._0;
-          }_E.Case('Line 106, Column 30') }();
-          var cs_19 = function(){ 
-          switch (_106000_17.ctor) {
-            case 'Tuple2':
-              return _106000_17._1;
-          }_E.Case('Line 106, Column 30') }();
-          return (pred_13(lst_14._0)?{ctor:"Tuple2", _0:_L.Cons(lst_14._0,bs_18), _1:cs_19}:{ctor:"Tuple2", _0:bs_18, _1:_L.Cons(lst_14._0,cs_19)});}();
-      case 'Nil':
-        return {ctor:"Tuple2", _0:_L.Nil, _1:_L.Nil};
-    }_E.Case('Line 104, Column 5') }();});
-  var unzip_6 = function(pairs_24){
-    return function(){ 
-    switch (pairs_24.ctor) {
-      case 'Cons':
-        switch (pairs_24._0.ctor) {
-          case 'Tuple2':
-            return function(){
-              var _127000_28 = unzip_6(pairs_24._1);
-              var xs_29 = function(){ 
-              switch (_127000_28.ctor) {
-                case 'Tuple2':
-                  return _127000_28._0;
-              }_E.Case('Line 127, Column 33') }();
-              var ys_30 = function(){ 
-              switch (_127000_28.ctor) {
-                case 'Tuple2':
-                  return _127000_28._1;
-              }_E.Case('Line 127, Column 33') }();
-              return {ctor:"Tuple2", _0:_L.Cons(pairs_24._0._0,xs_29), _1:_L.Cons(pairs_24._0._1,ys_30)};}();
-        }break;
-      case 'Nil':
-        return {ctor:"Tuple2", _0:_L.Nil, _1:_L.Nil};
-    }_E.Case('Line 125, Column 3') }();};
-  var intersperse_7 = F2(function(sep_35, xs_36){
-    return function(){ 
-    switch (xs_36.ctor) {
-      case 'Cons':
-        switch (xs_36._1.ctor) {
-          case 'Cons':
-            return _L.Cons(xs_36._0,_L.Cons(sep_35,A2(intersperse_7, sep_35, _L.Cons(xs_36._1._0,xs_36._1._1))));
-          case 'Nil':
-            return _L.Cons(xs_36._0,_L.Nil);
-        }break;
-      case 'Nil':
-        return _L.Nil;
-    }_E.Case('Line 145, Column 3') }();});
-  var sum_1 = A2(L.foldl, function(x_9){
-    return function(y_10){
-      return (x_9+y_10);};}, 0);
-  var product_2 = A2(L.foldl, function(x_11){
-    return function(y_12){
-      return (x_11*y_12);};}, 1);
-  var maximum_3 = L.foldl1(max);
-  var minimum_4 = L.foldl1(min);
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.List||{};
-  _.$op = {};
-  _.concatMap = concatMap_0;
-  _.sum = sum_1;
-  _.product = product_2;
-  _.maximum = maximum_3;
-  _.minimum = minimum_4;
-  _.partition = partition_5;
-  _.unzip = unzip_6;
-  _.intersperse = intersperse_7
-  return elm.List = _;
-  };
-Elm.Keyboard = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var N = Elm.Native.Keyboard(elm);
-  var arrows_0 = A4(N.directions, 38, 40, 37, 39);
-  var wasd_1 = A4(N.directions, 87, 83, 65, 68);
-  var shift_2 = N.isDown(16);
-  var ctrl_3 = N.isDown(17);
-  var space_4 = N.isDown(32);
-  var enter_5 = N.isDown(13);
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Keyboard||{};
-  _.$op = {};
-  _.arrows = arrows_0;
-  _.wasd = wasd_1;
-  _.shift = shift_2;
-  _.ctrl = ctrl_3;
-  _.space = space_4;
-  _.enter = enter_5
-  return elm.Keyboard = _;
-  };
-Elm.Json = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var Dict = Elm.Dict(elm);
-  var JS = Elm.JavaScript(elm);
-  var Native = Elm.Native.Json(elm);
-  var String_0 = function(a1){
-    return {ctor:"String", _0:a1};};
-  var Number_1 = function(a1){
-    return {ctor:"Number", _0:a1};};
-  var Boolean_2 = function(a1){
-    return {ctor:"Boolean", _0:a1};};
-  var Null_3 = {ctor:"Null"};
-  var Array_4 = function(a1){
-    return {ctor:"Array", _0:a1};};
-  var Object_5 = function(a1){
-    return {ctor:"Object", _0:a1};};
-  var toString_6 = F2(function(sep_8, v_9){
-    return JS.toString(A2(Native.toJSString, sep_8, v_9));});
-  var fromString_7 = function(s_10){
-    return Native.fromJSString(JS.fromString(s_10));};
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Json||{};
-  _.$op = {};
-  _.String = String_0;
-  _.Number = Number_1;
-  _.Boolean = Boolean_2;
-  _.Null = Null_3;
-  _.Array = Array_4;
-  _.Object = Object_5;
-  _.toString = toString_6;
-  _.fromString = fromString_7
-  return elm.Json = _;
-  };
-Elm.JavaScript = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.JavaScript||{};
-  _.$op = {}
-  return elm.JavaScript = _;
-  };
-Elm.Http = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var _ = Elm.Native.Http(elm); var Native = Native||{};Native.Http = _;
-  var send = _.send;
-  var _ = Elm.Signal(elm); var Signal = _;
-  var lift = _.lift;
-  var Success_0 = function(a1){
-    return {ctor:"Success", _0:a1};};
-  var Waiting_1 = {ctor:"Waiting"};
-  var Failure_2 = F2(function(a1, a2){
-    return {ctor:"Failure", _0:a1, _1:a2};});
-  var Request_3 = F4(function(verb_8, url_9, body_10, headers_11){
-    return {
-      _:{
-      },
-      body:body_10,
-      headers:headers_11,
-      url:url_9,
-      verb:verb_8};});
-  var get_5 = function(url_12){
-    return A4(Request_3, _str('GET'), url_12, _str(''), _L.Nil);};
-  var post_6 = F2(function(url_13, body_14){
-    return A4(Request_3, _str('POST'), url_13, body_14, _L.Nil);});
-  var sendGet_7 = function(reqs_15){
-    return send(A2(lift, get_5, reqs_15));};
-  var request_4 = Request_3;
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Http||{};
-  _.$op = {};
-  _.Success = Success_0;
-  _.Waiting = Waiting_1;
-  _.Failure = Failure_2;
-  _.Request = Request_3;
-  _.request = request_4;
-  _.get = get_5;
-  _.post = post_6;
-  _.sendGet = sendGet_7
-  return elm.Http = _;
-  };
-Elm.Either = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var _ = Elm.List(elm); var List = _;
-  var Left_0 = function(a1){
-    return {ctor:"Left", _0:a1};};
-  var Right_1 = function(a1){
-    return {ctor:"Right", _0:a1};};
-  var either_2 = F3(function(f_11, g_12, e_13){
-    return function(){ 
-    switch (e_13.ctor) {
-      case 'Left':
-        return f_11(e_13._0);
-      case 'Right':
-        return g_12(e_13._0);
-    }_E.Case('Line 16, Column 16') }();});
-  var isLeft_3 = function(e_16){
-    return function(){ 
-    switch (e_16.ctor) {
-      case 'Left':
-        return true;
-    }
-    return false; }();};
-  var isRight_4 = function(e_17){
-    return function(){ 
-    switch (e_17.ctor) {
-      case 'Right':
-        return true;
-    }
-    return false; }();};
-  var lefts_5 = function(es_18){
-    return A3(List.foldr, consLeft_8, _L.Nil, es_18);};
-  var rights_6 = function(es_19){
-    return A3(List.foldr, consRight_9, _L.Nil, es_19);};
-  var partition_7 = function(es_20){
-    return A3(List.foldr, consEither_10, {ctor:"Tuple2", _0:_L.Nil, _1:_L.Nil}, es_20);};
-  var consLeft_8 = F2(function(e_21, vs_22){
-    return function(){ 
-    switch (e_21.ctor) {
-      case 'Left':
-        return _L.Cons(e_21._0,vs_22);
-      case 'Right':
-        return vs_22;
-    }_E.Case('Line 40, Column 5') }();});
-  var consRight_9 = F2(function(e_24, vs_25){
-    return function(){ 
-    switch (e_24.ctor) {
-      case 'Left':
-        return vs_25;
-      case 'Right':
-        return _L.Cons(e_24._0,vs_25);
-    }_E.Case('Line 45, Column 5') }();});
-  var consEither_10 = F2(function(e_27, _52000_28){
-    return function(){ 
-    switch (_52000_28.ctor) {
-      case 'Tuple2':
-        return function(){ 
-        switch (e_27.ctor) {
-          case 'Left':
-            return {ctor:"Tuple2", _0:_L.Cons(e_27._0,_52000_28._0), _1:_52000_28._1};
-          case 'Right':
-            return {ctor:"Tuple2", _0:_52000_28._0, _1:_L.Cons(e_27._0,_52000_28._1)};
-        }_E.Case('Line 50, Column 5') }();
-    }_E.Case('Line 50, Column 5') }();});
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Either||{};
-  _.$op = {};
-  _.Left = Left_0;
-  _.Right = Right_1;
-  _.either = either_2;
-  _.isLeft = isLeft_3;
-  _.isRight = isRight_4;
-  _.lefts = lefts_5;
-  _.rights = rights_6;
-  _.partition = partition_7;
-  _.consLeft = consLeft_8;
-  _.consRight = consRight_9;
-  _.consEither = consEither_10
-  return elm.Either = _;
-  };
-Elm.Dict = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
   var Maybe = Elm.Maybe(elm);
-  var Error = Elm.Native.Error(elm);
-  var List = Elm.List(elm);
-  var _ = Elm.Native.Utils(elm); var Native = Native||{};Native.Utils = _;
-  var compare = _.compare;
-  var Red_0 = {ctor:"Red"};
-  var Black_1 = {ctor:"Black"};
-  var RBNode_2 = F5(function(a1, a2, a3, a4, a5){
-    return {ctor:"RBNode", _0:a1, _1:a2, _2:a3, _3:a4, _4:a5};});
-  var RBEmpty_3 = {ctor:"RBEmpty"};
-  var min_5 = function(t_41){
-    return function(){ 
-    switch (t_41.ctor) {
-      case 'RBEmpty':
-        return Error.raise(_str('(min Empty) is not defined'));
-      case 'RBNode':
-        switch (t_41._3.ctor) {
-          case 'RBEmpty':
-            return {ctor:"Tuple2", _0:t_41._1, _1:t_41._2};
-        }
-        return min_5(t_41._3);
-    }_E.Case('Line 104, Column 3') }();};
-  var lookup_6 = F2(function(k_45, t_46){
-    return function(){ 
-    switch (t_46.ctor) {
-      case 'RBEmpty':
-        return Maybe.Nothing;
-      case 'RBNode':
-        return function(){ 
-        var case12 = A2(compare, k_45, t_46._1);
-        switch (case12.ctor) {
-          case 'EQ':
-            return Maybe.Just(t_46._2);
-          case 'GT':
-            return A2(lookup_6, k_45, t_46._4);
-          case 'LT':
-            return A2(lookup_6, k_45, t_46._3);
-        }_E.Case('Line 124, Column 5') }();
-    }_E.Case('Line 121, Column 2') }();});
-  var findWithDefault_7 = F3(function(base_51, k_52, t_53){
-    return function(){ 
-    switch (t_53.ctor) {
-      case 'RBEmpty':
-        return base_51;
-      case 'RBNode':
-        return function(){ 
-        var case19 = A2(compare, k_52, t_53._1);
-        switch (case19.ctor) {
-          case 'EQ':
-            return t_53._2;
-          case 'GT':
-            return A3(findWithDefault_7, base_51, k_52, t_53._4);
-          case 'LT':
-            return A3(findWithDefault_7, base_51, k_52, t_53._3);
-        }_E.Case('Line 136, Column 5') }();
-    }_E.Case('Line 133, Column 2') }();});
-  var member_8 = F2(function(k_58, t_59){
-    return Maybe.isJust(A2(lookup_6, k_58, t_59));});
-  var rotateLeft_9 = function(t_60){
-    return function(){ 
-    switch (t_60.ctor) {
-      case 'RBNode':
-        switch (t_60._4.ctor) {
-          case 'RBNode':
-            return A5(RBNode_2, t_60._0, t_60._4._1, t_60._4._2, A5(RBNode_2, Red_0, t_60._1, t_60._2, t_60._3, t_60._4._3), t_60._4._4);
-        }break;
-    }
-    return Error.raise(_str('rotateLeft of a node without enough children')); }();};
-  var rotateRight_10 = function(t_70){
-    return function(){ 
-    switch (t_70.ctor) {
-      case 'RBNode':
-        switch (t_70._3.ctor) {
-          case 'RBNode':
-            return A5(RBNode_2, t_70._0, t_70._3._1, t_70._3._2, t_70._3._3, A5(RBNode_2, Red_0, t_70._1, t_70._2, t_70._3._4, t_70._4));
-        }break;
-    }
-    return Error.raise(_str('rotateRight of a node without enough children')); }();};
-  var rotateLeftIfNeeded_11 = function(t_80){
-    return function(){ 
-    switch (t_80.ctor) {
-      case 'RBNode':
-        switch (t_80._4.ctor) {
-          case 'RBNode':
-            switch (t_80._4._0.ctor) {
-              case 'Red':
-                return rotateLeft_9(t_80);
-            }break;
-        }break;
-    }
-    return t_80; }();};
-  var rotateRightIfNeeded_12 = function(t_81){
-    return function(){ 
-    switch (t_81.ctor) {
-      case 'RBNode':
-        switch (t_81._3.ctor) {
-          case 'RBNode':
-            switch (t_81._3._0.ctor) {
-              case 'Red':
-                switch (t_81._3._3.ctor) {
-                  case 'RBNode':
-                    switch (t_81._3._3._0.ctor) {
-                      case 'Red':
-                        return rotateRight_10(t_81);
-                    }break;
-                }break;
-            }break;
-        }break;
-    }
-    return t_81; }();};
-  var otherColor_13 = function(c_82){
-    return function(){ 
-    switch (c_82.ctor) {
-      case 'Black':
-        return Red_0;
-      case 'Red':
-        return Black_1;
-    }_E.Case('Line 185, Column 16') }();};
-  var color_flip_14 = function(t_83){
-    return function(){ 
-    switch (t_83.ctor) {
-      case 'RBNode':
-        switch (t_83._3.ctor) {
-          case 'RBNode':
-            switch (t_83._4.ctor) {
-              case 'RBNode':
-                return A5(RBNode_2, otherColor_13(t_83._0), t_83._1, t_83._2, A5(RBNode_2, otherColor_13(t_83._3._0), t_83._3._1, t_83._3._2, t_83._3._3, t_83._3._4), A5(RBNode_2, otherColor_13(t_83._4._0), t_83._4._1, t_83._4._2, t_83._4._3, t_83._4._4));
-            }break;
-        }break;
-    }
-    return Error.raise(_str('color_flip called on a Empty or Node with a Empty child')); }();};
-  var color_flipIfNeeded_15 = function(t_97){
-    return function(){ 
-    switch (t_97.ctor) {
-      case 'RBNode':
-        switch (t_97._3.ctor) {
-          case 'RBNode':
-            switch (t_97._3._0.ctor) {
-              case 'Red':
-                switch (t_97._4.ctor) {
-                  case 'RBNode':
-                    switch (t_97._4._0.ctor) {
-                      case 'Red':
-                        return color_flip_14(t_97);
-                    }break;
-                }break;
-            }break;
-        }break;
-    }
-    return t_97; }();};
-  var fixUp_16 = function(t_98){
-    return color_flipIfNeeded_15(rotateRightIfNeeded_12(rotateLeftIfNeeded_11(t_98)));};
-  var ensureBlackRoot_17 = function(t_99){
-    return function(){ 
-    switch (t_99.ctor) {
-      case 'RBNode':
-        switch (t_99._0.ctor) {
-          case 'Red':
-            return A5(RBNode_2, Black_1, t_99._1, t_99._2, t_99._3, t_99._4);
-        }break;
-    }
-    return t_99; }();};
-  var insert_18 = F3(function(k_104, v_105, t_106){
+  var _op = {};
+  var enqueue = F2(function(x, arg1){
     return function(){
-      var ins_107 = function(t_108){
-        return function(){ 
-        switch (t_108.ctor) {
-          case 'RBEmpty':
-            return A5(RBNode_2, Red_0, k_104, v_105, RBEmpty_3, RBEmpty_3);
-          case 'RBNode':
-            return function(){
-              var h_114 = function(){ 
-              var case114 = A2(compare, k_104, t_108._1);
-              switch (case114.ctor) {
-                case 'EQ':
-                  return A5(RBNode_2, t_108._0, t_108._1, v_105, t_108._3, t_108._4);
-                case 'GT':
-                  return A5(RBNode_2, t_108._0, t_108._1, t_108._2, t_108._3, ins_107(t_108._4));
-                case 'LT':
-                  return A5(RBNode_2, t_108._0, t_108._1, t_108._2, ins_107(t_108._3), t_108._4);
-              }_E.Case('Line 218, Column 19') }();
-              return fixUp_16(h_114);}();
-        }_E.Case('Line 215, Column 7') }();};
-      return ensureBlackRoot_17(ins_107(t_106));}();});
-  var singleton_19 = F2(function(k_115, v_116){
-    return A3(insert_18, k_115, v_116, RBEmpty_3);});
-  var isRed_20 = function(t_117){
-    return function(){ 
-    switch (t_117.ctor) {
-      case 'RBNode':
-        switch (t_117._0.ctor) {
-          case 'Red':
-            return true;
-        }break;
-    }
-    return false; }();};
-  var isRedLeft_21 = function(t_118){
-    return function(){ 
-    switch (t_118.ctor) {
-      case 'RBNode':
-        switch (t_118._3.ctor) {
-          case 'RBNode':
-            switch (t_118._3._0.ctor) {
-              case 'Red':
-                return true;
-            }break;
-        }break;
-    }
-    return false; }();};
-  var isRedLeftLeft_22 = function(t_119){
-    return function(){ 
-    switch (t_119.ctor) {
-      case 'RBNode':
-        switch (t_119._3.ctor) {
-          case 'RBNode':
-            switch (t_119._3._3.ctor) {
-              case 'RBNode':
-                switch (t_119._3._3._0.ctor) {
-                  case 'Red':
-                    return true;
-                }break;
-            }break;
-        }break;
-    }
-    return false; }();};
-  var isRedRight_23 = function(t_120){
-    return function(){ 
-    switch (t_120.ctor) {
-      case 'RBNode':
-        switch (t_120._4.ctor) {
-          case 'RBNode':
-            switch (t_120._4._0.ctor) {
-              case 'Red':
-                return true;
-            }break;
-        }break;
-    }
-    return false; }();};
-  var isRedRightLeft_24 = function(t_121){
-    return function(){ 
-    switch (t_121.ctor) {
-      case 'RBNode':
-        switch (t_121._4.ctor) {
-          case 'RBNode':
-            switch (t_121._4._3.ctor) {
-              case 'RBNode':
-                switch (t_121._4._3._0.ctor) {
-                  case 'Red':
-                    return true;
-                }break;
-            }break;
-        }break;
-    }
-    return false; }();};
-  var moveRedLeft_25 = function(t_122){
+      switch (arg1.ctor) {
+        case '_Tuple2':
+          return {ctor:"_Tuple2", _0:_L.Cons(x,arg1._0), _1:arg1._1};
+      }_E.Case($moduleName,'on line 72, column 22 to 31')}();});
+  var empty = {ctor:"_Tuple2", _0:_J.toList([]), _1:_J.toList([])};
+  var dequeue = function(q){
     return function(){
-      var t$_123 = color_flip_14(t_122);
-      return function(){ 
-      switch (t$_123.ctor) {
-        case 'RBNode':
-          return function(){ 
-          switch (t$_123._4.ctor) {
-            case 'RBNode':
-              switch (t$_123._4._3.ctor) {
-                case 'RBNode':
-                  switch (t$_123._4._3._0.ctor) {
-                    case 'Red':
-                      return color_flip_14(rotateLeft_9(A5(RBNode_2, t$_123._0, t$_123._1, t$_123._2, t$_123._3, rotateRight_10(t$_123._4))));
-                  }break;
+      switch (q.ctor) {
+        case '_Tuple2':
+          switch (q._0.ctor) {
+            case '[]':
+              switch (q._1.ctor) {
+                case '[]':
+                  return Maybe.Nothing;
               }break;
           }
-          return t$_123; }();
+          switch (q._1.ctor) {
+            case '::':
+              return Maybe.Just({ctor:"_Tuple2", _0:q._1._0, _1:{ctor:"_Tuple2", _0:q._0, _1:q._1._1}});
+            case '[]':
+              return dequeue({ctor:"_Tuple2", _0:_J.toList([]), _1:List.reverse(q._0)});
+          }break;
+      }_E.Case($moduleName,'between lines 73 and 76')}();};
+  var Step = function(a){
+    return {ctor:"Step", _0:a};};
+  var hiddenState = F2(function(s, f){
+    return Step(function(x){
+      return function(){
+        var _8 = A2(f, x, s);
+        var out = function(){
+          switch (_8.ctor) {
+            case '_Tuple2':
+              return _8._1;
+          }_E.Case($moduleName,'on line 63, column 46 to 51')}();
+        var s$ = function(){
+          switch (_8.ctor) {
+            case '_Tuple2':
+              return s$;
+          }_E.Case($moduleName,'on line 63, column 46 to 51')}();
+        return {ctor:"_Tuple2", _0:A2(hiddenState, s$, f), _1:out};}();});});
+  var average = function(k){
+    return function(){
+      var stepFull = F2(function(n, arg1){
+        return function(){
+          switch (arg1.ctor) {
+            case '_Tuple3':
+              return function(){
+                var case19 = dequeue(arg1._0);
+                switch (case19.ctor) {
+                  case 'Just':
+                    switch (case19._0.ctor) {
+                      case '_Tuple2':
+                        return function(){
+                          var sum$ = ((arg1._2+n)-case19._0._0);
+                          return {ctor:"_Tuple2", _0:{ctor:"_Tuple3", _0:A2(enqueue, n, case19._0._1), _1:arg1._1, _2:sum$}, _1:(sum$/arg1._1)};}();
+                    }break;
+                  case 'Nothing':
+                    return {ctor:"_Tuple2", _0:{ctor:"_Tuple3", _0:arg1._0, _1:arg1._1, _2:arg1._2}, _1:0};
+                }_E.Case($moduleName,'between lines 85 and 89')}();
+          }_E.Case($moduleName,'between lines 85 and 89')}();});
+      var step = F2(function(n, arg1){
+        return function(){
+          switch (arg1.ctor) {
+            case '_Tuple3':
+              return (_N.eq(arg1._1,k) ? A2(stepFull, n, {ctor:"_Tuple3", _0:arg1._0, _1:arg1._1, _2:arg1._2}) : (Basics.otherwise ? {ctor:"_Tuple2", _0:{ctor:"_Tuple3", _0:A2(enqueue, n, arg1._0), _1:(arg1._1+1), _2:(arg1._2+n)}, _1:((arg1._2+n)/(arg1._1+1))} : _E.If($moduleName,'between lines 82 and 83')));
+          }_E.Case($moduleName,'between lines 82 and 83')}();});
+      return A2(hiddenState, {ctor:"_Tuple3", _0:empty, _1:0, _2:0}, step);}();};
+  var pure = function(f){
+    return Step(function(x){
+      return {ctor:"_Tuple2", _0:pure(f), _1:f(x)};});};
+  var run = F3(function(auto, base, inputs){
+    return function(){
+      var step = F2(function(a, arg1){
+        return function(){
+          switch (arg1.ctor) {
+            case '_Tuple2':
+              switch (arg1._0.ctor) {
+                case 'Step':
+                  return arg1._0._0(a);
+              }break;
+          }_E.Case($moduleName,'on line 18, column 28 to 31')}();});
+      return A2(Signal.lift, function(arg1){
+        return function(){
+          switch (arg1.ctor) {
+            case '_Tuple2':
+              return arg1._1;
+          }_E.Case($moduleName,'on line 19, column 23 to 24')}();}, A3(Signal.foldp, step, {ctor:"_Tuple2", _0:auto, _1:base}, inputs));}();});
+  var state = F2(function(s, f){
+    return Step(function(x){
+      return function(){
+        var s$ = A2(f, x, s);
+        return {ctor:"_Tuple2", _0:A2(state, s$, f), _1:s$};}();});});
+  var count = A2(state, 0, F2(function(arg2, c){
+    return function(){
+      return (c+1);}();}));
+  var step = F2(function(a, arg1){
+    return function(){
+      switch (arg1.ctor) {
+        case 'Step':
+          return arg1._0(a);
+      }_E.Case($moduleName,'on line 23, column 19 to 22')}();});
+  var combine = function(autos){
+    return Step(function(a){
+      return function(){
+        var _37 = List.unzip(A2(List.map, step(a), autos));
+        var autos$ = function(){
+          switch (_37.ctor) {
+            case '_Tuple2':
+              return autos$;
+          }_E.Case($moduleName,'on line 39, column 34 to 59')}();
+        var bs = function(){
+          switch (_37.ctor) {
+            case '_Tuple2':
+              return _37._1;
+          }_E.Case($moduleName,'on line 39, column 34 to 59')}();
+        return {ctor:"_Tuple2", _0:combine(autos$), _1:bs};}();});};
+  _op['>>>'] = F2(function(f, g){
+    return Step(function(a){
+      return function(){
+        var _44 = A2(step, a, f);
+        var b = function(){
+          switch (_44.ctor) {
+            case '_Tuple2':
+              return _44._1;
+          }_E.Case($moduleName,'on line 28, column 29 to 37')}();
+        var f$ = function(){
+          switch (_44.ctor) {
+            case '_Tuple2':
+              return f$;
+          }_E.Case($moduleName,'on line 28, column 29 to 37')}();
+        var _51 = A2(step, b, g);
+        var c = function(){
+          switch (_51.ctor) {
+            case '_Tuple2':
+              return _51._1;
+          }_E.Case($moduleName,'on line 29, column 29 to 37')}();
+        var g$ = function(){
+          switch (_51.ctor) {
+            case '_Tuple2':
+              return g$;
+          }_E.Case($moduleName,'on line 29, column 29 to 37')}();
+        return {ctor:"_Tuple2", _0:A2(_op['>>>'], f$, g$), _1:c};}();});});
+  _op['<<<'] = F2(function(g, f){
+    return A2(_op['>>>'], f, g);});
+  return elm.Automaton = {
+    _op : _op, 
+    run : run, 
+    step : step, 
+    combine : combine, 
+    pure : pure, 
+    state : state, 
+    hiddenState : hiddenState, 
+    count : count, 
+    empty : empty, 
+    enqueue : enqueue, 
+    dequeue : dequeue, 
+    average : average, 
+    Step : Step};};
+Elm.Basics = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Basics';
+  var Native = Native || {};
+  Native.Basics = Elm.Native.Basics(elm);
+  var _op = {};
+  _op['||'] = Native.Basics.or;
+  _op['|>'] = F2(function(x, f){
+    return f(x);});
+  var xor = Native.Basics.xor;
+  var uncurry = Native.Basics.uncurry;
+  var truncate = Native.Basics.truncate;
+  var toFloat = Native.Basics.toFloat;
+  var tan = Native.Basics.tan;
+  var sqrt = Native.Basics.sqrt;
+  var snd = Native.Basics.snd;
+  var sin = Native.Basics.sin;
+  var round = Native.Basics.round;
+  var rem = Native.Basics.rem;
+  var radians = function(t){
+    return t;};
+  var pi = Native.Basics.pi;
+  var otherwise = true;
+  var not = Native.Basics.not;
+  var mod = Native.Basics.mod;
+  var min = Native.Basics.min;
+  var max = Native.Basics.max;
+  var logBase = Native.Basics.logBase;
+  var id = function(x){
+    return x;};
+  var fst = Native.Basics.fst;
+  var floor = Native.Basics.floor;
+  var flip = F3(function(f, b, a){
+    return A2(f, a, b);});
+  var e = Native.Basics.e;
+  var div = Native.Basics.div;
+  var curry = Native.Basics.curry;
+  var cos = Native.Basics.cos;
+  var compare = Native.Basics.compare;
+  var clamp = Native.Basics.clamp;
+  var ceiling = Native.Basics.ceiling;
+  var atan2 = Native.Basics.atan2;
+  var atan = Native.Basics.atan;
+  var asin = Native.Basics.asin;
+  var acos = Native.Basics.acos;
+  var abs = Native.Basics.abs;
+  _op['^'] = Native.Basics.exp;
+  var LT = {ctor:"LT"};
+  var GT = {ctor:"GT"};
+  var EQ = {ctor:"EQ"};
+  _op['>='] = Native.Basics.ge;
+  _op['>'] = Native.Basics.gt;
+  _op['=='] = Native.Basics.eq;
+  _op['<|'] = F2(function(f, x){
+    return f(x);});
+  _op['<='] = Native.Basics.le;
+  _op['<'] = Native.Basics.lt;
+  _op['/='] = Native.Basics.neq;
+  _op['/'] = Native.Basics.floatDiv;
+  _op['.'] = F3(function(f, g, x){
+    return f(g(x));});
+  _op['-'] = Native.Basics.sub;
+  _op['+'] = Native.Basics.add;
+  var toPolar = function(arg1){
+    return function(){
+      switch (arg1.ctor) {
+        case '_Tuple2':
+          return {ctor:"_Tuple2", _0:Native.Basics.sqrt((Math.pow(arg1._0,2)+Math.pow(arg1._1,2))), _1:A2(Native.Basics.atan2, arg1._1, arg1._0)};
+      }_E.Case($moduleName,'on line 29, column 18 to 73')}();};
+  _op['*'] = Native.Basics.mul;
+  var degrees = function(d){
+    return ((d*Native.Basics.pi)/180);};
+  var fromPolar = function(arg1){
+    return function(){
+      switch (arg1.ctor) {
+        case '_Tuple2':
+          return {ctor:"_Tuple2", _0:(arg1._0*Native.Basics.cos(arg1._1)), _1:(arg1._0*Native.Basics.sin(arg1._1))};
+      }_E.Case($moduleName,'on line 24, column 20 to 68')}();};
+  var turns = function(r){
+    return ((2*Native.Basics.pi)*r);};
+  _op['&&'] = Native.Basics.and;
+  return elm.Basics = {
+    _op : _op, 
+    radians : radians, 
+    degrees : degrees, 
+    turns : turns, 
+    fromPolar : fromPolar, 
+    toPolar : toPolar, 
+    div : div, 
+    rem : rem, 
+    mod : mod, 
+    cos : cos, 
+    sin : sin, 
+    tan : tan, 
+    acos : acos, 
+    asin : asin, 
+    atan : atan, 
+    atan2 : atan2, 
+    sqrt : sqrt, 
+    abs : abs, 
+    logBase : logBase, 
+    min : min, 
+    max : max, 
+    clamp : clamp, 
+    pi : pi, 
+    e : e, 
+    compare : compare, 
+    xor : xor, 
+    not : not, 
+    otherwise : otherwise, 
+    round : round, 
+    truncate : truncate, 
+    floor : floor, 
+    ceiling : ceiling, 
+    toFloat : toFloat, 
+    id : id, 
+    fst : fst, 
+    snd : snd, 
+    flip : flip, 
+    curry : curry, 
+    uncurry : uncurry, 
+    LT : LT, 
+    EQ : EQ, 
+    GT : GT};};
+Elm.Char = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Char';
+  var Native = Native || {};
+  Native.Char = Elm.Native.Char(elm);
+  var _op = {};
+  var toUpper = Native.Char.toUpper;
+  var toLower = Native.Char.toLower;
+  var toLocaleUpper = Native.Char.toLocaleUpper;
+  var toLocaleLower = Native.Char.toLocaleLower;
+  var toCode = Native.Char.toCode;
+  var isUpper = Native.Char.isUpper;
+  var isOctDigit = Native.Char.isOctDigit;
+  var isLower = Native.Char.isLower;
+  var isHexDigit = Native.Char.isHexDigit;
+  var isDigit = Native.Char.isDigit;
+  var fromCode = Native.Char.fromCode;
+  return elm.Char = {
+    _op : _op, 
+    isUpper : isUpper, 
+    isLower : isLower, 
+    isDigit : isDigit, 
+    isOctDigit : isOctDigit, 
+    isHexDigit : isHexDigit, 
+    toUpper : toUpper, 
+    toLower : toLower, 
+    toLocaleUpper : toLocaleUpper, 
+    toLocaleLower : toLocaleLower, 
+    toCode : toCode, 
+    fromCode : fromCode};};
+Elm.Color = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Color';
+  var Native = Native || {};
+  Native.Color = Elm.Native.Color(elm);
+  var _op = {};
+  var hsva = Native.Color.hsva;
+  var hsv = Native.Color.hsv;
+  var complement = Native.Color.complement;
+  var Radial = F5(function(a, b, c, d, e){
+    return {ctor:"Radial", _0:a, _1:b, _2:c, _3:d, _4:e};});
+  var radial = Radial;
+  var Linear = F3(function(a, b, c){
+    return {ctor:"Linear", _0:a, _1:b, _2:c};});
+  var linear = Linear;
+  var Color = F4(function(a, b, c, d){
+    return {ctor:"Color", _0:a, _1:b, _2:c, _3:d};});
+  var black = A4(Color, 0, 0, 0, 1);
+  var blue = A4(Color, 0, 0, 255, 1);
+  var cyan = A4(Color, 0, 255, 255, 1);
+  var forestGreen = A4(Color, 34, 139, 34, 1);
+  var gray = A4(Color, 128, 128, 128, 1);
+  var green = A4(Color, 0, 128, 0, 1);
+  var grey = A4(Color, 128, 128, 128, 1);
+  var lime = A4(Color, 0, 255, 0, 1);
+  var magenta = A4(Color, 255, 0, 255, 1);
+  var maroon = A4(Color, 128, 0, 0, 1);
+  var navy = A4(Color, 0, 0, 128, 1);
+  var purple = A4(Color, 128, 0, 128, 1);
+  var red = A4(Color, 255, 0, 0, 1);
+  var rgb = F3(function(r, g, b){
+    return A4(Color, r, g, b, 1);});
+  var rgba = Color;
+  var teal = A4(Color, 0, 128, 128, 1);
+  var violet = A4(Color, 238, 130, 238, 1);
+  var white = A4(Color, 255, 255, 255, 1);
+  var yellow = A4(Color, 255, 255, 0, 1);
+  return elm.Color = {
+    _op : _op, 
+    rgba : rgba, 
+    rgb : rgb, 
+    red : red, 
+    lime : lime, 
+    blue : blue, 
+    yellow : yellow, 
+    cyan : cyan, 
+    magenta : magenta, 
+    black : black, 
+    white : white, 
+    gray : gray, 
+    grey : grey, 
+    maroon : maroon, 
+    navy : navy, 
+    green : green, 
+    teal : teal, 
+    purple : purple, 
+    violet : violet, 
+    forestGreen : forestGreen, 
+    complement : complement, 
+    hsva : hsva, 
+    hsv : hsv, 
+    linear : linear, 
+    radial : radial, 
+    Color : Color, 
+    Linear : Linear, 
+    Radial : Radial};};
+Elm.Date = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Date';
+  var Basics = Elm.Basics(elm);
+  var Native = Native || {};
+  Native.Date = Elm.Native.Date(elm);
+  var Time = Elm.Time(elm);
+  var Maybe = Elm.Maybe(elm);
+  var _op = {};
+  var year = Native.Date.year;
+  var toTime = Native.Date.toTime;
+  var second = Native.Date.second;
+  var read = Native.Date.read;
+  var month = Native.Date.month;
+  var minute = Native.Date.minute;
+  var hour = Native.Date.hour;
+  var dayOfWeek = Native.Date.dayOfWeek;
+  var day = Native.Date.day;
+  var Wed = {ctor:"Wed"};
+  var Tue = {ctor:"Tue"};
+  var Thu = {ctor:"Thu"};
+  var Sun = {ctor:"Sun"};
+  var Sep = {ctor:"Sep"};
+  var Sat = {ctor:"Sat"};
+  var Oct = {ctor:"Oct"};
+  var Nov = {ctor:"Nov"};
+  var Mon = {ctor:"Mon"};
+  var May = {ctor:"May"};
+  var Mar = {ctor:"Mar"};
+  var Jun = {ctor:"Jun"};
+  var Jul = {ctor:"Jul"};
+  var Jan = {ctor:"Jan"};
+  var Fri = {ctor:"Fri"};
+  var Feb = {ctor:"Feb"};
+  var Dec = {ctor:"Dec"};
+  var Date = {ctor:"Date"};
+  var Aug = {ctor:"Aug"};
+  var Apr = {ctor:"Apr"};
+  return elm.Date = {
+    _op : _op, 
+    read : read, 
+    toTime : toTime, 
+    year : year, 
+    month : month, 
+    day : day, 
+    dayOfWeek : dayOfWeek, 
+    hour : hour, 
+    minute : minute, 
+    second : second, 
+    Date : Date, 
+    Mon : Mon, 
+    Tue : Tue, 
+    Wed : Wed, 
+    Thu : Thu, 
+    Fri : Fri, 
+    Sat : Sat, 
+    Sun : Sun, 
+    Jan : Jan, 
+    Feb : Feb, 
+    Mar : Mar, 
+    Apr : Apr, 
+    May : May, 
+    Jun : Jun, 
+    Jul : Jul, 
+    Aug : Aug, 
+    Sep : Sep, 
+    Oct : Oct, 
+    Nov : Nov, 
+    Dec : Dec};};
+Elm.Dict = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Dict';
+  var Basics = Elm.Basics(elm);
+  var Maybe = Elm.Maybe(elm);
+  var Native = Native || {};
+  Native.Error = Elm.Native.Error(elm);
+  var List = Elm.List(elm);
+  var Native = Native || {};
+  Native.Utils = Elm.Native.Utils(elm);
+  var _op = {};
+  var Red = {ctor:"Red"};
+  var RBNode = F5(function(a, b, c, d, e){
+    return {ctor:"RBNode", _0:a, _1:b, _2:c, _3:d, _4:e};});
+  var isRed = function(t){
+    return function(){
+      switch (t.ctor) {
+        case 'RBNode':
+          switch (t._0.ctor) {
+            case 'Red':
+              return true;
+          }break;
       }
-      return t$_123; }();}();};
-  var moveRedRight_26 = function(t_129){
+      return false;}();};
+  var isRedLeft = function(t){
     return function(){
-      var t$_130 = color_flip_14(t_129);
-      return (isRedLeftLeft_22(t$_130)?color_flip_14(rotateRight_10(t$_130)):t$_130);}();};
-  var moveRedLeftIfNeeded_27 = function(t_131){
-    return ((isRedLeft_21(t_131)||isRedLeftLeft_22(t_131))?t_131:moveRedLeft_25(t_131));};
-  var moveRedRightIfNeeded_28 = function(t_132){
-    return ((isRedRight_23(t_132)||isRedRightLeft_24(t_132))?t_132:moveRedRight_26(t_132));};
-  var deleteMin_29 = function(t_133){
+      switch (t.ctor) {
+        case 'RBNode':
+          switch (t._3.ctor) {
+            case 'RBNode':
+              switch (t._3._0.ctor) {
+                case 'Red':
+                  return true;
+              }break;
+          }break;
+      }
+      return false;}();};
+  var isRedLeftLeft = function(t){
     return function(){
-      var del_134 = function(t_135){
-        return function(){ 
-        switch (t_135.ctor) {
-          case 'RBNode':
-            switch (t_135._3.ctor) {
-              case 'RBEmpty':
-                return RBEmpty_3;
-            }break;
-        }
-        return function(){ 
-        var case198 = moveRedLeftIfNeeded_27(t_135);
-        switch (case198.ctor) {
-          case 'RBEmpty':
-            return RBEmpty_3;
-          case 'RBNode':
-            return fixUp_16(A5(RBNode_2, case198._0, case198._1, case198._2, del_134(case198._3), case198._4));
-        }_E.Case('Line 296, Column 12') }(); }();};
-      return ensureBlackRoot_17(del_134(t_133));}();};
-  var remove_30 = F2(function(k_141, t_142){
+      switch (t.ctor) {
+        case 'RBNode':
+          switch (t._3.ctor) {
+            case 'RBNode':
+              switch (t._3._3.ctor) {
+                case 'RBNode':
+                  switch (t._3._3._0.ctor) {
+                    case 'Red':
+                      return true;
+                  }break;
+              }break;
+          }break;
+      }
+      return false;}();};
+  var isRedRight = function(t){
     return function(){
-      var eq_and_noRightNode_143 = function(t_149){
-        return function(){ 
-        switch (t_149.ctor) {
-          case 'RBNode':
-            switch (t_149._4.ctor) {
-              case 'RBEmpty':
-                return _N.eq(k_141,t_149._1);
-            }break;
-        }
-        return false; }();};
-      var eq_144 = function(t_151){
-        return function(){ 
-        switch (t_151.ctor) {
-          case 'RBNode':
-            return _N.eq(k_141,t_151._1);
-        }
-        return false; }();};
-      var delLT_145 = function(t_153){
-        return function(){ 
-        var case216 = moveRedLeftIfNeeded_27(t_153);
-        switch (case216.ctor) {
-          case 'RBEmpty':
-            return Error.raise(_str('delLT on Empty'));
-          case 'RBNode':
-            return fixUp_16(A5(RBNode_2, case216._0, case216._1, case216._2, del_148(case216._3), case216._4));
-        }_E.Case('Line 321, Column 17') }();};
-      var delEQ_146 = function(t_159){
-        return function(){ 
-        switch (t_159.ctor) {
-          case 'RBEmpty':
-            return Error.raise(_str('delEQ called on a Empty'));
+      switch (t.ctor) {
+        case 'RBNode':
+          switch (t._4.ctor) {
+            case 'RBNode':
+              switch (t._4._0.ctor) {
+                case 'Red':
+                  return true;
+              }break;
+          }break;
+      }
+      return false;}();};
+  var isRedRightLeft = function(t){
+    return function(){
+      switch (t.ctor) {
+        case 'RBNode':
+          switch (t._4.ctor) {
+            case 'RBNode':
+              switch (t._4._3.ctor) {
+                case 'RBNode':
+                  switch (t._4._3._0.ctor) {
+                    case 'Red':
+                      return true;
+                  }break;
+              }break;
+          }break;
+      }
+      return false;}();};
+  var rotateLeft = function(t){
+    return function(){
+      switch (t.ctor) {
+        case 'RBNode':
+          switch (t._4.ctor) {
+            case 'RBNode':
+              return A5(RBNode, t._0, t._4._1, t._4._2, A5(RBNode, Red, t._1, t._2, t._3, t._4._3), t._4._4);
+          }break;
+      }
+      return Native.Error.raise(_str('rotateLeft of a node without enough children'));}();};
+  var rotateLeftIfNeeded = function(t){
+    return function(){
+      switch (t.ctor) {
+        case 'RBNode':
+          switch (t._4.ctor) {
+            case 'RBNode':
+              switch (t._4._0.ctor) {
+                case 'Red':
+                  return rotateLeft(t);
+              }break;
+          }break;
+      }
+      return t;}();};
+  var rotateRight = function(t){
+    return function(){
+      switch (t.ctor) {
+        case 'RBNode':
+          switch (t._3.ctor) {
+            case 'RBNode':
+              return A5(RBNode, t._0, t._3._1, t._3._2, t._3._3, A5(RBNode, Red, t._1, t._2, t._3._4, t._4));
+          }break;
+      }
+      return Native.Error.raise(_str('rotateRight of a node without enough children'));}();};
+  var rotateRightIfNeeded = function(t){
+    return function(){
+      switch (t.ctor) {
+        case 'RBNode':
+          switch (t._3.ctor) {
+            case 'RBNode':
+              switch (t._3._0.ctor) {
+                case 'Red':
+                  switch (t._3._3.ctor) {
+                    case 'RBNode':
+                      switch (t._3._3._0.ctor) {
+                        case 'Red':
+                          return rotateRight(t);
+                      }break;
+                  }break;
+              }break;
+          }break;
+      }
+      return t;}();};
+  var RBEmpty = {ctor:"RBEmpty"};
+  var empty = RBEmpty;
+  var findWithDefault = F3(function(base, k, t){
+    return function(){
+      switch (t.ctor) {
+        case 'RBEmpty':
+          return base;
+        case 'RBNode':
+          return function(){
+            var case115 = A2(Native.Utils.compare, k, t._1);
+            switch (case115.ctor) {
+              case 'EQ':
+                return t._2;
+              case 'GT':
+                return A3(findWithDefault, base, k, t._4);
+              case 'LT':
+                return A3(findWithDefault, base, k, t._3);
+            }_E.Case($moduleName,'between lines 137 and 153')}();
+      }_E.Case($moduleName,'between lines 134 and 153')}();});
+  var foldl = F3(function(f, acc, t){
+    return function(){
+      switch (t.ctor) {
+        case 'RBEmpty':
+          return acc;
+        case 'RBNode':
+          return A3(foldl, f, A3(f, t._1, t._2, A3(foldl, f, acc, t._3)), t._4);
+      }_E.Case($moduleName,'between lines 360 and 362')}();});
+  var foldr = F3(function(f, acc, t){
+    return function(){
+      switch (t.ctor) {
+        case 'RBEmpty':
+          return acc;
+        case 'RBNode':
+          return A3(foldr, f, A3(f, t._1, t._2, A3(foldr, f, acc, t._4)), t._3);
+      }_E.Case($moduleName,'between lines 368 and 370')}();});
+  var keys = function(t){
+    return A3(foldr, F3(function(k, v, acc){
+      return _L.Cons(k,acc);}), _J.toList([]), t);};
+  var toList = function(t){
+    return A3(foldr, F3(function(k, v, acc){
+      return _L.Cons({ctor:"_Tuple2", _0:k, _1:v},acc);}), _J.toList([]), t);};
+  var values = function(t){
+    return A3(foldr, F3(function(k, v, acc){
+      return _L.Cons(v,acc);}), _J.toList([]), t);};
+  var lookup = F2(function(k, t){
+    return function(){
+      switch (t.ctor) {
+        case 'RBEmpty':
+          return Maybe.Nothing;
+        case 'RBNode':
+          return function(){
+            var case134 = A2(Native.Utils.compare, k, t._1);
+            switch (case134.ctor) {
+              case 'EQ':
+                return Maybe.Just(t._2);
+              case 'GT':
+                return A2(lookup, k, t._4);
+              case 'LT':
+                return A2(lookup, k, t._3);
+            }_E.Case($moduleName,'between lines 125 and 128')}();
+      }_E.Case($moduleName,'between lines 122 and 128')}();});
+  var member = F2(function(k, t){
+    return Maybe.isJust(A2(lookup, k, t));});
+  var map = F2(function(f, t){
+    return function(){
+      switch (t.ctor) {
+        case 'RBEmpty':
+          return RBEmpty;
+        case 'RBNode':
+          return A5(RBNode, t._0, t._1, f(t._2), A2(map, f, t._3), A2(map, f, t._4));
+      }_E.Case($moduleName,'between lines 352 and 354')}();});
+  var min = function(t){
+    return function(){
+      switch (t.ctor) {
+        case 'RBEmpty':
+          return Native.Error.raise(_str('(min Empty) is not defined'));
+        case 'RBNode':
+          switch (t._3.ctor) {
+            case 'RBEmpty':
+              return {ctor:"_Tuple2", _0:t._1, _1:t._2};
+          }
+          return min(t._3);
+      }_E.Case($moduleName,'between lines 105 and 117')}();};
+  var Black = {ctor:"Black"};
+  var ensureBlackRoot = function(t){
+    return function(){
+      switch (t.ctor) {
+        case 'RBNode':
+          switch (t._0.ctor) {
+            case 'Red':
+              return A5(RBNode, Black, t._1, t._2, t._3, t._4);
+          }break;
+      }
+      return t;}();};
+  var otherColor = function(c){
+    return function(){
+      switch (c.ctor) {
+        case 'Black':
+          return Red;
+        case 'Red':
+          return Black;
+      }_E.Case($moduleName,'on line 186, column 16 to 57')}();};
+  var color_flip = function(t){
+    return function(){
+      switch (t.ctor) {
+        case 'RBNode':
+          switch (t._3.ctor) {
+            case 'RBNode':
+              switch (t._4.ctor) {
+                case 'RBNode':
+                  return A5(RBNode, otherColor(t._0), t._1, t._2, A5(RBNode, otherColor(t._3._0), t._3._1, t._3._2, t._3._3, t._3._4), A5(RBNode, otherColor(t._4._0), t._4._1, t._4._2, t._4._3, t._4._4));
+              }break;
+          }break;
+      }
+      return Native.Error.raise(_str('color_flip called on a Empty or Node with a Empty child'));}();};
+  var color_flipIfNeeded = function(t){
+    return function(){
+      switch (t.ctor) {
+        case 'RBNode':
+          switch (t._3.ctor) {
+            case 'RBNode':
+              switch (t._3._0.ctor) {
+                case 'Red':
+                  switch (t._4.ctor) {
+                    case 'RBNode':
+                      switch (t._4._0.ctor) {
+                        case 'Red':
+                          return color_flip(t);
+                      }break;
+                  }break;
+              }break;
+          }break;
+      }
+      return t;}();};
+  var fixUp = function(t){
+    return color_flipIfNeeded(rotateRightIfNeeded(rotateLeftIfNeeded(t)));};
+  var insert = F3(function(k, v, t){
+    return function(){
+      var ins = function(t){
+        return function(){
+          switch (t.ctor) {
+            case 'RBEmpty':
+              return A5(RBNode, Red, k, v, RBEmpty, RBEmpty);
+            case 'RBNode':
+              return function(){
+                var h = function(){
+                  var case192 = A2(Native.Utils.compare, k, t._1);
+                  switch (case192.ctor) {
+                    case 'EQ':
+                      return A5(RBNode, t._0, t._1, v, t._3, t._4);
+                    case 'GT':
+                      return A5(RBNode, t._0, t._1, t._2, t._3, ins(t._4));
+                    case 'LT':
+                      return A5(RBNode, t._0, t._1, t._2, ins(t._3), t._4);
+                  }_E.Case($moduleName,'between lines 219 and 223')}();
+                return fixUp(h);}();
+          }_E.Case($moduleName,'between lines 216 and 224')}();};
+      return ensureBlackRoot(ins(t));}();});
+  var fromList = function(assocs){
+    return A3(List.foldl, F2(function(arg2, d){
+      return function(){
+        switch (arg2.ctor) {
+          case '_Tuple2':
+            return A3(insert, arg2._0, arg2._1, d);
+        }_E.Case($moduleName,'on line 403, column 43 to 55')}();}), empty, assocs);};
+  var intersect = F2(function(t1, t2){
+    return function(){
+      var combine = F3(function(k, v, t){
+        return (A2(member, k, t2) ? A3(insert, k, v, t) : (Basics.otherwise ? t : _E.If($moduleName,'on line 381, column 22 to 63')));});
+      return A3(foldl, combine, empty, t1);}();});
+  var singleton = F2(function(k, v){
+    return A3(insert, k, v, RBEmpty);});
+  var union = F2(function(t1, t2){
+    return A3(foldl, insert, t2, t1);});
+  var moveRedLeft = function(t){
+    return function(){
+      var t$ = color_flip(t);
+      return function(){
+        switch (t$.ctor) {
           case 'RBNode':
             return function(){
-              var _325000_163 = min_5(t_159._4);
-              var k$_164 = function(){ 
-              switch (_325000_163.ctor) {
-                case 'Tuple2':
-                  return _325000_163._0;
-              }_E.Case('Line 325, Column 53') }();
-              var v$_165 = function(){ 
-              switch (_325000_163.ctor) {
-                case 'Tuple2':
-                  return _325000_163._1;
-              }_E.Case('Line 325, Column 53') }();
-              return fixUp_16(A5(RBNode_2, t_159._0, k$_164, v$_165, t_159._3, deleteMin_29(t_159._4)));}();
-        }_E.Case('Line 324, Column 17') }();};
-      var delGT_147 = function(t_170){
-        return function(){ 
-        switch (t_170.ctor) {
-          case 'RBEmpty':
-            return Error.raise(_str('delGT called on a Empty'));
-          case 'RBNode':
-            return fixUp_16(A5(RBNode_2, t_170._0, t_170._1, t_170._2, t_170._3, del_148(t_170._4)));
-        }_E.Case('Line 328, Column 17') }();};
-      var del_148 = function(t_176){
-        return function(){ 
-        switch (t_176.ctor) {
-          case 'RBEmpty':
-            return RBEmpty_3;
-          case 'RBNode':
-            return ((_N.cmp(k_141,t_176._1).ctor==='LT')?delLT_145(t_176):function(){
-              var u_178 = (isRedLeft_21(t_176)?rotateRight_10(t_176):t_176);
-              return (eq_and_noRightNode_143(u_178)?RBEmpty_3:function(){
-                var t$_179 = moveRedRightIfNeeded_28(t_176);
-                return (eq_144(t$_179)?delEQ_146(t$_179):delGT_147(t$_179));}());}());
-        }_E.Case('Line 331, Column 15') }();};
-      return (A2(member_8, k_141, t_142)?ensureBlackRoot_17(del_148(t_142)):t_142);}();});
-  var map_31 = F2(function(f_180, t_181){
-    return function(){ 
-    switch (t_181.ctor) {
-      case 'RBEmpty':
-        return RBEmpty_3;
-      case 'RBNode':
-        return A5(RBNode_2, t_181._0, t_181._1, f_180(t_181._2), A2(map_31, f_180, t_181._3), A2(map_31, f_180, t_181._4));
-    }_E.Case('Line 351, Column 3') }();});
-  var foldl_32 = F3(function(f_187, acc_188, t_189){
-    return function(){ 
-    switch (t_189.ctor) {
-      case 'RBEmpty':
-        return acc_188;
-      case 'RBNode':
-        return A3(foldl_32, f_187, A3(f_187, t_189._1, t_189._2, A3(foldl_32, f_187, acc_188, t_189._3)), t_189._4);
-    }_E.Case('Line 359, Column 3') }();});
-  var foldr_33 = F3(function(f_194, acc_195, t_196){
-    return function(){ 
-    switch (t_196.ctor) {
-      case 'RBEmpty':
-        return acc_195;
-      case 'RBNode':
-        return A3(foldr_33, f_194, A3(f_194, t_196._1, t_196._2, A3(foldr_33, f_194, acc_195, t_196._4)), t_196._3);
-    }_E.Case('Line 367, Column 3') }();});
-  var union_34 = F2(function(t1_201, t2_202){
-    return A3(foldl_32, insert_18, t2_202, t1_201);});
-  var intersect_35 = F2(function(t1_203, t2_204){
-    return function(){
-      var combine_205 = F3(function(k_206, v_207, t_208){
-        return (A2(member_8, k_206, t2_204)?A3(insert_18, k_206, v_207, t_208):t_208);});
-      return A3(foldl_32, combine_205, empty_4, t1_203);}();});
-  var diff_36 = F2(function(t1_209, t2_210){
-    return A3(foldl_32, function(k_211){
-      return function(v_212){
-        return function(t_213){
-          return A2(remove_30, k_211, t_213);};};}, t1_209, t2_210);});
-  var keys_37 = function(t_214){
-    return A3(foldr_33, function(k_215){
-      return function(v_216){
-        return function(acc_217){
-          return _L.Cons(k_215,acc_217);};};}, _L.Nil, t_214);};
-  var values_38 = function(t_218){
-    return A3(foldr_33, function(k_219){
-      return function(v_220){
-        return function(acc_221){
-          return _L.Cons(v_220,acc_221);};};}, _L.Nil, t_218);};
-  var toList_39 = function(t_222){
-    return A3(foldr_33, function(k_223){
-      return function(v_224){
-        return function(acc_225){
-          return _L.Cons({ctor:"Tuple2", _0:k_223, _1:v_224},acc_225);};};}, _L.Nil, t_222);};
-  var fromList_40 = function(assocs_226){
-    return A3(List.foldl, function(_0_227){
-      return function(){ 
-      switch (_0_227.ctor) {
-        case 'Tuple2':
-          return function(d_230){
-            return A3(insert_18, _0_227._0, _0_227._1, d_230);};
-      }_E.Case('Line 402, Column 43') }();}, empty_4, assocs_226);};
-  var empty_4 = RBEmpty_3;
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Dict||{};
-  _.$op = {};
-  _.empty = empty_4;
-  _.lookup = lookup_6;
-  _.findWithDefault = findWithDefault_7;
-  _.member = member_8;
-  _.insert = insert_18;
-  _.singleton = singleton_19;
-  _.remove = remove_30;
-  _.map = map_31;
-  _.foldl = foldl_32;
-  _.foldr = foldr_33;
-  _.union = union_34;
-  _.intersect = intersect_35;
-  _.diff = diff_36;
-  _.keys = keys_37;
-  _.values = values_38;
-  _.toList = toList_39;
-  _.fromList = fromList_40
-  return elm.Dict = _;
-  };
-Elm.Date = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var Mon_0 = {ctor:"Mon"};
-  var Tue_1 = {ctor:"Tue"};
-  var Wed_2 = {ctor:"Wed"};
-  var Thu_3 = {ctor:"Thu"};
-  var Fri_4 = {ctor:"Fri"};
-  var Sat_5 = {ctor:"Sat"};
-  var Sun_6 = {ctor:"Sun"};
-  var Jan_7 = {ctor:"Jan"};
-  var Feb_8 = {ctor:"Feb"};
-  var Mar_9 = {ctor:"Mar"};
-  var Apr_10 = {ctor:"Apr"};
-  var May_11 = {ctor:"May"};
-  var Jun_12 = {ctor:"Jun"};
-  var Jul_13 = {ctor:"Jul"};
-  var Aug_14 = {ctor:"Aug"};
-  var Sep_15 = {ctor:"Sep"};
-  var Oct_16 = {ctor:"Oct"};
-  var Nov_17 = {ctor:"Nov"};
-  var Dec_18 = {ctor:"Dec"};
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Date||{};
-  _.$op = {};
-  _.Mon = Mon_0;
-  _.Tue = Tue_1;
-  _.Wed = Wed_2;
-  _.Thu = Thu_3;
-  _.Fri = Fri_4;
-  _.Sat = Sat_5;
-  _.Sun = Sun_6;
-  _.Jan = Jan_7;
-  _.Feb = Feb_8;
-  _.Mar = Mar_9;
-  _.Apr = Apr_10;
-  _.May = May_11;
-  _.Jun = Jun_12;
-  _.Jul = Jul_13;
-  _.Aug = Aug_14;
-  _.Sep = Sep_15;
-  _.Oct = Oct_16;
-  _.Nov = Nov_17;
-  _.Dec = Dec_18
-  return elm.Date = _;
-  };
-Elm.Color = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var Color_0 = F4(function(a1, a2, a3, a4){
-    return {ctor:"Color", _0:a1, _1:a2, _2:a3, _3:a4};});
-  var Linear_20 = F3(function(a1, a2, a3){
-    return {ctor:"Linear", _0:a1, _1:a2, _2:a3};});
-  var Radial_21 = F5(function(a1, a2, a3, a4, a5){
-    return {ctor:"Radial", _0:a1, _1:a2, _2:a3, _3:a4, _4:a5};});
-  var rgb_2 = F3(function(r_24, g_25, b_26){
-    return A4(Color_0, r_24, g_25, b_26, 1);});
-  var rgba_1 = Color_0;
-  var red_3 = A4(Color_0, 255, 0, 0, 1);
-  var lime_4 = A4(Color_0, 0, 255, 0, 1);
-  var blue_5 = A4(Color_0, 0, 0, 255, 1);
-  var yellow_6 = A4(Color_0, 255, 255, 0, 1);
-  var cyan_7 = A4(Color_0, 0, 255, 255, 1);
-  var magenta_8 = A4(Color_0, 255, 0, 255, 1);
-  var black_9 = A4(Color_0, 0, 0, 0, 1);
-  var white_10 = A4(Color_0, 255, 255, 255, 1);
-  var gray_11 = A4(Color_0, 128, 128, 128, 1);
-  var grey_12 = A4(Color_0, 128, 128, 128, 1);
-  var maroon_13 = A4(Color_0, 128, 0, 0, 1);
-  var navy_14 = A4(Color_0, 0, 0, 128, 1);
-  var green_15 = A4(Color_0, 0, 128, 0, 1);
-  var teal_16 = A4(Color_0, 0, 128, 128, 1);
-  var purple_17 = A4(Color_0, 128, 0, 128, 1);
-  var violet_18 = A4(Color_0, 238, 130, 238, 1);
-  var forestGreen_19 = A4(Color_0, 34, 139, 34, 1);
-  var linear_22 = Linear_20;
-  var radial_23 = Radial_21;
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Color||{};
-  _.$op = {};
-  _.Color = Color_0;
-  _.rgba = rgba_1;
-  _.rgb = rgb_2;
-  _.red = red_3;
-  _.lime = lime_4;
-  _.blue = blue_5;
-  _.yellow = yellow_6;
-  _.cyan = cyan_7;
-  _.magenta = magenta_8;
-  _.black = black_9;
-  _.white = white_10;
-  _.gray = gray_11;
-  _.grey = grey_12;
-  _.maroon = maroon_13;
-  _.navy = navy_14;
-  _.green = green_15;
-  _.teal = teal_16;
-  _.purple = purple_17;
-  _.violet = violet_18;
-  _.forestGreen = forestGreen_19;
-  _.Linear = Linear_20;
-  _.Radial = Radial_21;
-  _.linear = linear_22;
-  _.radial = radial_23
-  return elm.Color = _;
-  };
-Elm.Char = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var N = Elm.Native.Char(elm);
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Char||{};
-  _.$op = {}
-  return elm.Char = _;
-  };
-Elm.Automaton = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var _ = Elm.Signal(elm); var Signal = _;
-  var lift = _.lift, foldp = _.foldp;
-  var Step_0 = function(a1){
-    return {ctor:"Step", _0:a1};};
-  var run_1 = F3(function(auto_12, base_13, inputs_14){
-    return function(){
-      var step_15 = F2(function(a_16, _15000_17){
-        return function(){ 
-        switch (_15000_17.ctor) {
-          case 'Tuple2':
-            switch (_15000_17._0.ctor) {
-              case 'Step':
-                return _15000_17._0._0(a_16);
-            }break;
-        }_E.Case('Line 15, Column 28') }();});
-      return A2(lift, function(_0_19){
-        return function(){ 
-        switch (_0_19.ctor) {
-          case 'Tuple2':
-            return _0_19._1;
-        }_E.Case('Line 16, Column 23') }();}, A3(foldp, step_15, {ctor:"Tuple2", _0:auto_12, _1:base_13}, inputs_14));}();});
-  var step_2 = F2(function(a_22, _20000_23){
-    return function(){ 
-    switch (_20000_23.ctor) {
-      case 'Step':
-        return _20000_23._0(a_22);
-    }_E.Case('Line 20, Column 19') }();});
-  $op['>>>'] = F2(function(f_25, g_26){
-    return Step_0(function(a_27){
-      return function(){
-        var _25000_28 = A2(step_2, a_27, f_25);
-        var f$_29 = function(){ 
-        switch (_25000_28.ctor) {
-          case 'Tuple2':
-            return _25000_28._0;
-        }_E.Case('Line 25, Column 29') }();
-        var b_30 = function(){ 
-        switch (_25000_28.ctor) {
-          case 'Tuple2':
-            return _25000_28._1;
-        }_E.Case('Line 25, Column 29') }();
-        var _26000_31 = A2(step_2, b_30, g_26);
-        var g$_32 = function(){ 
-        switch (_26000_31.ctor) {
-          case 'Tuple2':
-            return _26000_31._0;
-        }_E.Case('Line 26, Column 29') }();
-        var c_33 = function(){ 
-        switch (_26000_31.ctor) {
-          case 'Tuple2':
-            return _26000_31._1;
-        }_E.Case('Line 26, Column 29') }();
-        return {ctor:"Tuple2", _0:$op['>>>'](f$_29)(g$_32), _1:c_33};}();});});
-  $op['<<<'] = F2(function(g_42, f_43){
-    return $op['>>>'](f_43)(g_42);});
-  var combine_3 = function(autos_44){
-    return Step_0(function(a_45){
-      return function(){
-        var _36000_46 = unzip(A2(map, step_2(a_45), autos_44));
-        var autos$_47 = function(){ 
-        switch (_36000_46.ctor) {
-          case 'Tuple2':
-            return _36000_46._0;
-        }_E.Case('Line 36, Column 34') }();
-        var bs_48 = function(){ 
-        switch (_36000_46.ctor) {
-          case 'Tuple2':
-            return _36000_46._1;
-        }_E.Case('Line 36, Column 34') }();
-        return {ctor:"Tuple2", _0:combine_3(autos$_47), _1:bs_48};}();});};
-  var pure_4 = function(f_53){
-    return Step_0(function(x_54){
-      return {ctor:"Tuple2", _0:pure_4(f_53), _1:f_53(x_54)};});};
-  var state_5 = F2(function(s_55, f_56){
-    return Step_0(function(x_57){
-      return function(){
-        var s$_58 = A2(f_56, x_57, s_55);
-        return {ctor:"Tuple2", _0:A2(state_5, s$_58, f_56), _1:s$_58};}();});});
-  var hiddenState_6 = F2(function(s_59, f_60){
-    return Step_0(function(x_61){
-      return function(){
-        var _60000_62 = A2(f_60, x_61, s_59);
-        var s$_63 = function(){ 
-        switch (_60000_62.ctor) {
-          case 'Tuple2':
-            return _60000_62._0;
-        }_E.Case('Line 60, Column 46') }();
-        var out_64 = function(){ 
-        switch (_60000_62.ctor) {
-          case 'Tuple2':
-            return _60000_62._1;
-        }_E.Case('Line 60, Column 46') }();
-        return {ctor:"Tuple2", _0:A2(hiddenState_6, s$_63, f_60), _1:out_64};}();});});
-  var enqueue_9 = F2(function(x_71, _69000_72){
-    return function(){ 
-    switch (_69000_72.ctor) {
-      case 'Tuple2':
-        return {ctor:"Tuple2", _0:_L.Cons(x_71,_69000_72._0), _1:_69000_72._1};
-    }_E.Case('Line 69, Column 22') }();});
-  var dequeue_10 = function(q_75){
-    return function(){ 
-    switch (q_75.ctor) {
-      case 'Tuple2':
-        switch (q_75._0.ctor) {
-          case 'Nil':
-            switch (q_75._1.ctor) {
-              case 'Nil':
-                return Nothing;
-            }break;
+              switch (t$._4.ctor) {
+                case 'RBNode':
+                  switch (t$._4._3.ctor) {
+                    case 'RBNode':
+                      switch (t$._4._3._0.ctor) {
+                        case 'Red':
+                          return color_flip(rotateLeft(A5(RBNode, t$._0, t$._1, t$._2, t$._3, rotateRight(t$._4))));
+                      }break;
+                  }break;
+              }
+              return t$;}();
         }
-        switch (q_75._1.ctor) {
-          case 'Cons':
-            return Just({ctor:"Tuple2", _0:q_75._1._0, _1:{ctor:"Tuple2", _0:q_75._0, _1:q_75._1._1}});
-          case 'Nil':
-            return enqueue_9({ctor:"Tuple2", _0:_L.Nil, _1:reverse(q_75._0)});
-        }break;
-    }_E.Case('Line 70, Column 13') }();};
-  var average_11 = function(k_80){
+        return t$;}();}();};
+  var moveRedLeftIfNeeded = function(t){
+    return ((isRedLeft(t)||isRedLeftLeft(t)) ? t : (Basics.otherwise ? moveRedLeft(t) : _E.If($moduleName,'on line 286, column 3 to 62')));};
+  var deleteMin = function(t){
     return function(){
-      var step_81 = F2(function(n_83, _80000_84){
-        return function(){ 
-        switch (_80000_84.ctor) {
-          case 'Tuple3':
-            return (_N.eq(_80000_84._1,k_80)?A2(stepFull_82, n_83, {ctor:"Tuple3", _0:_80000_84._0, _1:_80000_84._1, _2:_80000_84._2}):{ctor:"Tuple2", _0:{ctor:"Tuple3", _0:A2(enqueue_9, n_83, _80000_84._0), _1:(1+_80000_84._1), _2:(_80000_84._2+n_83)}, _1:((_80000_84._2+n_83)/(1+_80000_84._1))});
-        }_E.Case('Line 79, Column 11') }();});
-      var stepFull_82 = F2(function(n_88, _86000_89){
-        return function(){ 
-        switch (_86000_89.ctor) {
-          case 'Tuple3':
-            return function(){ 
-            var case49 = dequeue_10(_86000_89._0);
-            switch (case49.ctor) {
-              case 'Just':
-                switch (case49._0.ctor) {
-                  case 'Tuple2':
-                    return function(){
-                      var sum$_95 = ((_86000_89._2+n_88)-case49._0._0);
-                      return {ctor:"Tuple2", _0:{ctor:"Tuple3", _0:A2(enqueue_9, n_88, case49._0._1), _1:_86000_89._1, _2:sum$_95}, _1:(sum$_95/_86000_89._1)};}();
-                }break;
-              case 'Nothing':
-                return {ctor:"Tuple2", _0:{ctor:"Tuple3", _0:_86000_89._0, _1:_86000_89._1, _2:_86000_89._2}, _1:0};
-            }_E.Case('Line 82, Column 11') }();
-        }_E.Case('Line 82, Column 11') }();});
-      return A2(hiddenState_6, {ctor:"Tuple3", _0:empty_8, _1:0, _2:0}, step_81);}();};
-  var count_7 = A2(state_5, 0, function(__69){
-    return function(c_70){
-      return (1+c_70);};});
-  var empty_8 = {ctor:"Tuple2", _0:_L.Nil, _1:_L.Nil};
-  elm.Native = elm.Native||{};
-  var _ = elm.Native.Automaton||{};
-  _.$op = {'>>>' : $op['>>>'], '<<<' : $op['<<<']};
-  _.Step = Step_0;
-  _.run = run_1;
-  _.step = step_2;
-  _.combine = combine_3;
-  _.pure = pure_4;
-  _.state = state_5;
-  _.hiddenState = hiddenState_6;
-  _.count = count_7;
-  _.empty = empty_8;
-  _.enqueue = enqueue_9;
-  _.dequeue = dequeue_10;
-  _.average = average_11
-  return elm.Automaton = _;
-  };
-Elm.JavaScript = Elm.JavaScript||{};
-Elm.JavaScript.Experimental = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var JS = Elm.JavaScript(elm);
-  var toRecord_0 = JS.toRecord;
-  var fromRecord_1 = JS.fromRecord;
-  elm.Native = elm.Native||{};
-  elm.Native.JavaScript = elm.Native.JavaScript||{};
-  var _ = elm.Native.JavaScript.Experimental||{};
-  _.$op = {};
-  _.toRecord = toRecord_0;
-  _.fromRecord = fromRecord_1
-  elm.JavaScript = elm.JavaScript||{};
-  return elm.JavaScript.Experimental = _;
-  };
-Elm.Graphics = Elm.Graphics||{};
-Elm.Graphics.Input = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var _ = Elm.Signal(elm); var Signal = _;
-  var lift = _.lift, dropRepeats = _.dropRepeats;
-  var N = Elm.Native.Graphics.Input(elm);
-  var _ = Elm.List(elm); var List = _;
-  var id_0 = function(x_10){
-    return x_10;};
-  var button_1 = function(txt_11){
+      var del = function(t){
+        return function(){
+          switch (t.ctor) {
+            case 'RBNode':
+              switch (t._3.ctor) {
+                case 'RBEmpty':
+                  return RBEmpty;
+              }break;
+          }
+          return function(){
+            var case219 = moveRedLeftIfNeeded(t);
+            switch (case219.ctor) {
+              case 'RBEmpty':
+                return RBEmpty;
+              case 'RBNode':
+                return fixUp(A5(RBNode, case219._0, case219._1, case219._2, del(case219._3), case219._4));
+            }_E.Case($moduleName,'between lines 297 and 300')}();}();};
+      return ensureBlackRoot(del(t));}();};
+  var moveRedRight = function(t){
     return function(){
-      var pool_12 = N.buttons({ctor:"Tuple0"});
-      return {ctor:"Tuple2", _0:A2(pool_12.button, {ctor:"Tuple0"}, txt_11), _1:pool_12.events};}();};
-  var customButton_2 = F3(function(up_13, hover_14, down_15){
+      var t$ = color_flip(t);
+      return (isRedLeftLeft(t$) ? color_flip(rotateRight(t$)) : (Basics.otherwise ? t$ : _E.If($moduleName,'on line 282, column 3 to 63')));}();};
+  var moveRedRightIfNeeded = function(t){
+    return ((isRedRight(t)||isRedRightLeft(t)) ? t : (Basics.otherwise ? moveRedRight(t) : _E.If($moduleName,'on line 290, column 3 to 65')));};
+  var remove = F2(function(k, t){
     return function(){
-      var pool_16 = N.customButtons({ctor:"Tuple0"});
-      return {ctor:"Tuple2", _0:A4(pool_16.customButton, {ctor:"Tuple0"}, up_13, hover_14, down_15), _1:pool_16.events};}();});
-  var checkbox_3 = function(b_17){
+      var eq_and_noRightNode = function(t){
+        return function(){
+          switch (t.ctor) {
+            case 'RBNode':
+              switch (t._4.ctor) {
+                case 'RBEmpty':
+                  return _N.eq(k,t._1);
+              }break;
+          }
+          return false;}();};
+      var eq = function(t){
+        return function(){
+          switch (t.ctor) {
+            case 'RBNode':
+              return _N.eq(k,t._1);
+          }
+          return false;}();};
+      var delEQ = function(t){
+        return function(){
+          switch (t.ctor) {
+            case 'RBEmpty':
+              return Native.Error.raise(_str('delEQ called on a Empty'));
+            case 'RBNode':
+              return function(){
+                var _243 = min(t._4);
+                var k$ = function(){
+                  switch (_243.ctor) {
+                    case '_Tuple2':
+                      return k$;
+                  }_E.Case($moduleName,'on line 326, column 53 to 58')}();
+                var v$ = function(){
+                  switch (_243.ctor) {
+                    case '_Tuple2':
+                      return v$;
+                  }_E.Case($moduleName,'on line 326, column 53 to 58')}();
+                return fixUp(A5(RBNode, t._0, k$, v$, t._3, deleteMin(t._4)));}();
+          }_E.Case($moduleName,'between lines 325 and 329')}();};
+      var del = function(t){
+        return function(){
+          switch (t.ctor) {
+            case 'RBEmpty':
+              return RBEmpty;
+            case 'RBNode':
+              return ((_N.cmp(k,t._1)<0) ? delLT(t) : (Basics.otherwise ? function(){
+                var u = (isRedLeft(t) ? rotateRight(t) : (Basics.otherwise ? t : _E.If($moduleName,'on line 336, column 33 to 73')));
+                return (eq_and_noRightNode(u) ? RBEmpty : (Basics.otherwise ? function(){
+                  var t$ = moveRedRightIfNeeded(t);
+                  return (eq(t$) ? delEQ(t$) : (Basics.otherwise ? delGT(t$) : _E.If($moduleName,'on line 339, column 29 to 65')));}() : _E.If($moduleName,'between lines 337 and 339')));}() : _E.If($moduleName,'between lines 335 and 339')));
+          }_E.Case($moduleName,'between lines 332 and 340')}();};
+      var delGT = function(t){
+        return function(){
+          switch (t.ctor) {
+            case 'RBEmpty':
+              return Native.Error.raise(_str('delGT called on a Empty'));
+            case 'RBNode':
+              return fixUp(A5(RBNode, t._0, t._1, t._2, t._3, del(t._4)));
+          }_E.Case($moduleName,'between lines 329 and 332')}();};
+      var delLT = function(t){
+        return function(){
+          var case262 = moveRedLeftIfNeeded(t);
+          switch (case262.ctor) {
+            case 'RBEmpty':
+              return Native.Error.raise(_str('delLT on Empty'));
+            case 'RBNode':
+              return fixUp(A5(RBNode, case262._0, case262._1, case262._2, del(case262._3), case262._4));
+          }_E.Case($moduleName,'between lines 322 and 325')}();};
+      return (A2(member, k, t) ? ensureBlackRoot(del(t)) : (Basics.otherwise ? t : _E.If($moduleName,'on line 340, column 7 to 56')));}();});
+  var diff = F2(function(t1, t2){
+    return A3(foldl, F3(function(k, v, t){
+      return A2(remove, k, t);}), t1, t2);});
+  return elm.Dict = {
+    _op : _op, 
+    empty : empty, 
+    singleton : singleton, 
+    insert : insert, 
+    lookup : lookup, 
+    findWithDefault : findWithDefault, 
+    remove : remove, 
+    member : member, 
+    foldl : foldl, 
+    foldr : foldr, 
+    map : map, 
+    union : union, 
+    intersect : intersect, 
+    diff : diff, 
+    keys : keys, 
+    values : values, 
+    toList : toList, 
+    fromList : fromList};};
+Elm.Either = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Either';
+  var List = Elm.List(elm);
+  var _op = {};
+  var Right = function(a){
+    return {ctor:"Right", _0:a};};
+  var isRight = function(e){
     return function(){
-      var cbs_18 = N.checkboxes(b_17);
-      return {ctor:"Tuple2", _0:A2(lift, cbs_18.box(id_0), cbs_18.events), _1:cbs_18.events};}();};
-  var FieldState_4 = F3(function(string_19, selectionStart_20, selectionEnd_21){
+      switch (e.ctor) {
+        case 'Right':
+          return true;
+      }
+      return false;}();};
+  var Left = function(a){
+    return {ctor:"Left", _0:a};};
+  var consEither = F2(function(e, arg1){
+    return function(){
+      switch (arg1.ctor) {
+        case '_Tuple2':
+          return function(){
+            switch (e.ctor) {
+              case 'Left':
+                return {ctor:"_Tuple2", _0:_L.Cons(e._0,arg1._0), _1:arg1._1};
+              case 'Right':
+                return {ctor:"_Tuple2", _0:arg1._0, _1:_L.Cons(e._0,arg1._1)};
+            }_E.Case($moduleName,'between lines 50 and 52')}();
+      }_E.Case($moduleName,'between lines 50 and 52')}();});
+  var partition = function(es){
+    return A3(List.foldr, consEither, {ctor:"_Tuple2", _0:_J.toList([]), _1:_J.toList([])}, es);};
+  var consLeft = F2(function(e, vs){
+    return function(){
+      switch (e.ctor) {
+        case 'Left':
+          return _L.Cons(e._0,vs);
+        case 'Right':
+          return vs;
+      }_E.Case($moduleName,'between lines 40 and 42')}();});
+  var lefts = function(es){
+    return A3(List.foldr, consLeft, _J.toList([]), es);};
+  var consRight = F2(function(e, vs){
+    return function(){
+      switch (e.ctor) {
+        case 'Left':
+          return vs;
+        case 'Right':
+          return _L.Cons(e._0,vs);
+      }_E.Case($moduleName,'between lines 45 and 47')}();});
+  var rights = function(es){
+    return A3(List.foldr, consRight, _J.toList([]), es);};
+  var either = F3(function(f, g, e){
+    return function(){
+      switch (e.ctor) {
+        case 'Left':
+          return f(e._0);
+        case 'Right':
+          return g(e._0);
+      }_E.Case($moduleName,'on line 16, column 16 to 60')}();});
+  var isLeft = function(e){
+    return function(){
+      switch (e.ctor) {
+        case 'Left':
+          return true;
+      }
+      return false;}();};
+  return elm.Either = {
+    _op : _op, 
+    either : either, 
+    isLeft : isLeft, 
+    isRight : isRight, 
+    lefts : lefts, 
+    rights : rights, 
+    partition : partition, 
+    consLeft : consLeft, 
+    consRight : consRight, 
+    consEither : consEither, 
+    Left : Left, 
+    Right : Right};};
+Elm.Http = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Http';
+  var Basics = Elm.Basics(elm);
+  var Signal = Elm.Signal(elm);
+  var Native = Native || {};
+  Native.Http = Elm.Native.Http(elm);
+  var _op = {};
+  var send = Native.Http.send;
+  var Waiting = {ctor:"Waiting"};
+  var Success = function(a){
+    return {ctor:"Success", _0:a};};
+  var Request = F4(function(a, b, c, d){
     return {
       _:{
       },
-      selectionEnd:selectionEnd_21,
-      selectionStart:selectionStart_20,
-      string:string_19};});
-  var field_6 = function(placeHolder_22){
+      body:c,
+      headers:d,
+      url:b,
+      verb:a};});
+  var get = function(url){
+    return A4(Request, _str('GET'), url, _str(''), _J.toList([]));};
+  var sendGet = function(reqs){
+    return send(A2(Signal.lift, get, reqs));};
+  var post = F2(function(url, body){
+    return A4(Request, _str('POST'), url, body, _J.toList([]));});
+  var request = Request;
+  var Failure = F2(function(a, b){
+    return {ctor:"Failure", _0:a, _1:b};});
+  return elm.Http = {
+    _op : _op, 
+    request : request, 
+    get : get, 
+    post : post, 
+    send : send, 
+    sendGet : sendGet, 
+    Success : Success, 
+    Waiting : Waiting, 
+    Failure : Failure};};
+Elm.JavaScript = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'JavaScript';
+  var Native = Native || {};
+  Native.JavaScript = Elm.Native.JavaScript(elm);
+  var Basics = Elm.Basics(elm);
+  var _op = {};
+  var toString = Native.JavaScript.toString;
+  var toList = Native.JavaScript.toList;
+  var toInt = Native.JavaScript.toInt;
+  var toFloat = Native.JavaScript.toFloat;
+  var toBool = Native.JavaScript.toBool;
+  var fromString = Native.JavaScript.fromString;
+  var fromList = Native.JavaScript.fromList;
+  var fromInt = Native.JavaScript.fromInt;
+  var fromFloat = Native.JavaScript.fromFloat;
+  var fromBool = Native.JavaScript.fromBool;
+  var JSString = {ctor:"JSString"};
+  var JSObject = {ctor:"JSObject"};
+  var JSNumber = {ctor:"JSNumber"};
+  var JSDomNode = {ctor:"JSDomNode"};
+  var JSBool = {ctor:"JSBool"};
+  var JSArray = function(a){
+    return {ctor:"JSArray", _0:a};};
+  return elm.JavaScript = {
+    _op : _op, 
+    toList : toList, 
+    toInt : toInt, 
+    toFloat : toFloat, 
+    toBool : toBool, 
+    toString : toString, 
+    fromList : fromList, 
+    fromInt : fromInt, 
+    fromFloat : fromFloat, 
+    fromBool : fromBool, 
+    fromString : fromString, 
+    JSNumber : JSNumber, 
+    JSBool : JSBool, 
+    JSString : JSString, 
+    JSArray : JSArray, 
+    JSDomNode : JSDomNode, 
+    JSObject : JSObject};};
+Elm.Json = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Json';
+  var Basics = Elm.Basics(elm);
+  var Dict = Elm.Dict(elm);
+  var Maybe = Elm.Maybe(elm);
+  var JavaScript = Elm.JavaScript(elm);
+  var Native = Native || {};
+  Native.Json = Elm.Native.Json(elm);
+  var JavaScript = Elm.JavaScript(elm);
+  var _op = {};
+  var toString = F2(function(sep, v){
+    return JavaScript.toString(A2(Native.Json.toJSString, sep, v));});
+  var toJSString = Native.Json.toJSString;
+  var toJSObject = Native.Json.toJSObject;
+  var fromString = function(s){
+    return Native.Json.fromJSString(JavaScript.fromString(s));};
+  var fromJSString = Native.Json.fromJSString;
+  var fromJSObject = Native.Json.fromJSObject;
+  var String = function(a){
+    return {ctor:"String", _0:a};};
+  var Object = function(a){
+    return {ctor:"Object", _0:a};};
+  var Number = function(a){
+    return {ctor:"Number", _0:a};};
+  var Null = {ctor:"Null"};
+  var Boolean = function(a){
+    return {ctor:"Boolean", _0:a};};
+  var Array = function(a){
+    return {ctor:"Array", _0:a};};
+  return elm.Json = {
+    _op : _op, 
+    toString : toString, 
+    toJSString : toJSString, 
+    fromString : fromString, 
+    fromJSString : fromJSString, 
+    fromJSObject : fromJSObject, 
+    toJSObject : toJSObject, 
+    String : String, 
+    Number : Number, 
+    Boolean : Boolean, 
+    Null : Null, 
+    Array : Array, 
+    Object : Object};};
+Elm.Keyboard = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Keyboard';
+  var Signal = Elm.Signal(elm);
+  var Native = Native || {};
+  Native.Keyboard = Elm.Native.Keyboard(elm);
+  var _op = {};
+  var lastPressed = Native.Keyboard.lastPressed;
+  var keysDown = Native.Keyboard.keysDown;
+  var isDown = Native.Keyboard.isDown;
+  var shift = isDown(16);
+  var space = isDown(32);
+  var enter = isDown(13);
+  var directions = Native.Keyboard.directions;
+  var wasd = A4(directions, 87, 83, 65, 68);
+  var ctrl = isDown(17);
+  var arrows = A4(directions, 38, 40, 37, 39);
+  return elm.Keyboard = {
+    _op : _op, 
+    directions : directions, 
+    arrows : arrows, 
+    wasd : wasd, 
+    isDown : isDown, 
+    shift : shift, 
+    ctrl : ctrl, 
+    space : space, 
+    enter : enter, 
+    keysDown : keysDown, 
+    lastPressed : lastPressed};};
+Elm.List = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'List';
+  var Basics = Elm.Basics(elm);
+  var Native = Native || {};
+  Native.List = Elm.Native.List(elm);
+  var _op = {};
+  var zipWith = Native.List.zipWith;
+  var zip = Native.List.zip;
+  var take = Native.List.take;
+  var tail = Native.List.tail;
+  var split = Native.List.split;
+  var scanl1 = Native.List.scanl1;
+  var scanl = Native.List.scanl;
+  var reverse = Native.List.reverse;
+  var or = Native.List.or;
+  var map = Native.List.map;
+  var length = Native.List.length;
+  var last = Native.List.last;
+  var join = Native.List.join;
+  var isEmpty = function(xs){
     return function(){
-      var tfs_23 = N.fields(emptyFieldState_5);
-      var changes_24 = dropRepeats(tfs_23.events);
-      return {ctor:"Tuple2", _0:A2(lift, A2(tfs_23.field, id_0, placeHolder_22), changes_24), _1:dropRepeats(A2(lift, function(__25){
-        return __25.string;}, changes_24))};}();};
-  var password_7 = function(placeHolder_26){
+      switch (xs.ctor) {
+        case '[]':
+          return true;
+      }
+      return false;}();};
+  var head = Native.List.head;
+  var foldr1 = Native.List.foldr1;
+  var foldr = Native.List.foldr;
+  var foldl1 = Native.List.foldl1;
+  var maximum = foldl1(Basics.max);
+  var minimum = foldl1(Basics.min);
+  var foldl = Native.List.foldl;
+  var product = A2(foldl, F2(function(x, y){
+    return (x*y);}), 1);
+  var sum = A2(foldl, F2(function(x, y){
+    return (x+y);}), 0);
+  var filter = Native.List.filter;
+  var drop = Native.List.drop;
+  var concat = Native.List.concat;
+  var concatMap = F2(function(f, list){
+    return concat(A2(map, f, list));});
+  var any = Native.List.any;
+  var and = Native.List.and;
+  var all = Native.List.all;
+  _op['::'] = Native.List.cons;
+  var intersperse = F2(function(sep, xs){
     return function(){
-      var tfs_27 = N.passwords(emptyFieldState_5);
-      var changes_28 = dropRepeats(tfs_27.events);
-      return {ctor:"Tuple2", _0:A2(lift, A2(tfs_27.field, id_0, placeHolder_26), changes_28), _1:dropRepeats(A2(lift, function(__29){
-        return __29.string;}, changes_28))};}();};
-  var email_8 = function(placeHolder_30){
+      switch (xs.ctor) {
+        case '::':
+          switch (xs._1.ctor) {
+            case '::':
+              return _L.Cons(xs._0,_L.Cons(sep,A2(intersperse, sep, _L.Cons(xs._1._0,xs._1._1))));
+            case '[]':
+              return _J.toList([xs._0]);
+          }break;
+        case '[]':
+          return _J.toList([]);
+      }_E.Case($moduleName,'between lines 176 and 179')}();});
+  var partition = F2(function(pred, lst){
     return function(){
-      var tfs_31 = N.emails(emptyFieldState_5);
-      var changes_32 = dropRepeats(tfs_31.events);
-      return {ctor:"Tuple2", _0:A2(lift, A2(tfs_31.field, id_0, placeHolder_30), changes_32), _1:dropRepeats(A2(lift, function(__33){
-        return __33.string;}, changes_32))};}();};
-  var stringDropDown_9 = function(strs_34){
-    return N.dropDown(A2(List.map, function(s_35){
-      return {ctor:"Tuple2", _0:s_35, _1:s_35};}, strs_34));};
-  var emptyFieldState_5 = {
+      switch (lst.ctor) {
+        case '::':
+          return function(){
+            var _9 = A2(partition, pred, lst._1);
+            var bs = function(){
+              switch (_9.ctor) {
+                case '_Tuple2':
+                  return _9._0;
+              }_E.Case($moduleName,'on line 133, column 30 to 47')}();
+            var cs = function(){
+              switch (_9.ctor) {
+                case '_Tuple2':
+                  return _9._1;
+              }_E.Case($moduleName,'on line 133, column 30 to 47')}();
+            return (pred(lst._0) ? {ctor:"_Tuple2", _0:_L.Cons(lst._0,bs), _1:cs} : (Basics.otherwise ? {ctor:"_Tuple2", _0:bs, _1:_L.Cons(lst._0,cs)} : _E.If($moduleName,'on line 134, column 16 to 57')));}();
+        case '[]':
+          return {ctor:"_Tuple2", _0:_J.toList([]), _1:_J.toList([])};
+      }_E.Case($moduleName,'between lines 131 and 134')}();});
+  var unzip = function(pairs){
+    return function(){
+      switch (pairs.ctor) {
+        case '::':
+          switch (pairs._0.ctor) {
+            case '_Tuple2':
+              return function(){
+                var _21 = unzip(pairs._1);
+                var xs = function(){
+                  switch (_21.ctor) {
+                    case '_Tuple2':
+                      return _21._0;
+                  }_E.Case($moduleName,'on line 156, column 33 to 41')}();
+                var ys = function(){
+                  switch (_21.ctor) {
+                    case '_Tuple2':
+                      return _21._1;
+                  }_E.Case($moduleName,'on line 156, column 33 to 41')}();
+                return {ctor:"_Tuple2", _0:_L.Cons(pairs._0._0,xs), _1:_L.Cons(pairs._0._1,ys)};}();
+          }break;
+        case '[]':
+          return {ctor:"_Tuple2", _0:_J.toList([]), _1:_J.toList([])};
+      }_E.Case($moduleName,'between lines 154 and 156')}();};
+  _op['++'] = Native.List.append;
+  return elm.List = {
+    _op : _op, 
+    head : head, 
+    tail : tail, 
+    last : last, 
+    isEmpty : isEmpty, 
+    map : map, 
+    foldl : foldl, 
+    foldr : foldr, 
+    foldl1 : foldl1, 
+    foldr1 : foldr1, 
+    scanl : scanl, 
+    scanl1 : scanl1, 
+    filter : filter, 
+    length : length, 
+    reverse : reverse, 
+    all : all, 
+    any : any, 
+    and : and, 
+    or : or, 
+    concat : concat, 
+    concatMap : concatMap, 
+    sum : sum, 
+    product : product, 
+    maximum : maximum, 
+    minimum : minimum, 
+    partition : partition, 
+    zip : zip, 
+    zipWith : zipWith, 
+    unzip : unzip, 
+    split : split, 
+    join : join, 
+    intersperse : intersperse, 
+    take : take, 
+    drop : drop};};
+Elm.Matrix2D = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Matrix2D';
+  var Native = Native || {};
+  Native.Matrix2D = Elm.Native.Matrix2D(elm);
+  var _op = {};
+  var rotation = Native.Matrix2D.rotation;
+  var multiply = Native.Matrix2D.multiply;
+  var matrix = Native.Matrix2D.matrix;
+  var identity = Native.Matrix2D.identity;
+  var Matrix2D = {ctor:"Matrix2D"};
+  return elm.Matrix2D = {
+    _op : _op, 
+    identity : identity, 
+    matrix : matrix, 
+    rotation : rotation, 
+    multiply : multiply, 
+    Matrix2D : Matrix2D};};
+Elm.Maybe = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Maybe';
+  var Basics = Elm.Basics(elm);
+  var List = Elm.List(elm);
+  var _op = {};
+  var Nothing = {ctor:"Nothing"};
+  var Just = function(a){
+    return {ctor:"Just", _0:a};};
+  var maybe = F3(function(b, f, m){
+    return function(){
+      switch (m.ctor) {
+        case 'Just':
+          return f(m._0);
+        case 'Nothing':
+          return b;
+      }_E.Case($moduleName,'between lines 14 and 16')}();});
+  var cons = F2(function(mx, xs){
+    return A3(maybe, xs, function(x){
+      return _L.Cons(x,xs);}, mx);});
+  var justs = A2(List.foldr, cons, _J.toList([]));
+  var isJust = A2(maybe, false, function(arg1){
+    return function(){
+      return true;}();});
+  var isNothing = function($){
+    return Basics.not(isJust($));};
+  return elm.Maybe = {
+    _op : _op, 
+    maybe : maybe, 
+    isJust : isJust, 
+    isNothing : isNothing, 
+    cons : cons, 
+    justs : justs, 
+    Just : Just, 
+    Nothing : Nothing};};
+Elm.Mouse = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Mouse';
+  var Signal = Elm.Signal(elm);
+  var Native = Native || {};
+  Native.Mouse = Elm.Native.Mouse(elm);
+  var _op = {};
+  var y = Native.Mouse.y;
+  var x = Native.Mouse.x;
+  var position = Native.Mouse.position;
+  var isDown = Native.Mouse.isDown;
+  var isClicked = Native.Mouse.isClicked;
+  var clicks = Native.Mouse.clicks;
+  return elm.Mouse = {
+    _op : _op, 
+    position : position, 
+    x : x, 
+    y : y, 
+    isDown : isDown, 
+    isClicked : isClicked, 
+    clicks : clicks};};
+Elm.Prelude = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Prelude';
+  var Basics = Elm.Basics(elm);
+  var Maybe = Elm.Maybe(elm);
+  var Native = Native || {};
+  Native.Prelude = Elm.Native.Prelude(elm);
+  var Native = Native || {};
+  Native.Show = Elm.Native.Show(elm);
+  var _op = {};
+  var show = Native.Show.show;
+  var readInt = Native.Prelude.readInt;
+  var readFloat = Native.Prelude.readFloat;
+  return elm.Prelude = {
+    _op : _op, 
+    show : show, 
+    readInt : readInt, 
+    readFloat : readFloat};};
+Elm.Random = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Random';
+  var Signal = Elm.Signal(elm);
+  var Native = Native || {};
+  Native.Random = Elm.Native.Random(elm);
+  var _op = {};
+  var range = Native.Random.range;
+  var float = Native.Random.float;
+  return elm.Random = {
+    _op : _op, 
+    range : range, 
+    float : float};};
+Elm.Set = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Set';
+  var Maybe = Elm.Maybe(elm);
+  var Dict = Elm.Dict(elm);
+  var List = Elm.List(elm);
+  var _op = {};
+  var union = Dict.union;
+  var toList = Dict.keys;
+  var singleton = function(k){
+    return A2(Dict.singleton, k, {ctor:"_Tuple0"});};
+  var remove = Dict.remove;
+  var member = Dict.member;
+  var intersect = Dict.intersect;
+  var insert = function(k){
+    return A2(Dict.insert, k, {ctor:"_Tuple0"});};
+  var foldr = F3(function(f, b, s){
+    return A3(Dict.foldr, F3(function(k, arg2, b){
+      return function(){
+        return A2(f, k, b);}();}), b, s);});
+  var foldl = F3(function(f, b, s){
+    return A3(Dict.foldl, F3(function(k, arg2, b){
+      return function(){
+        return A2(f, k, b);}();}), b, s);});
+  var empty = Dict.empty;
+  var fromList = function(xs){
+    return A3(List.foldl, insert, empty, xs);};
+  var map = F2(function(f, s){
+    return fromList(A2(List.map, f, toList(s)));});
+  var diff = Dict.diff;
+  return elm.Set = {
+    _op : _op, 
+    empty : empty, 
+    singleton : singleton, 
+    insert : insert, 
+    remove : remove, 
+    member : member, 
+    foldl : foldl, 
+    foldr : foldr, 
+    map : map, 
+    union : union, 
+    intersect : intersect, 
+    diff : diff, 
+    toList : toList, 
+    fromList : fromList};};
+Elm.Signal = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Signal';
+  var Native = Native || {};
+  Native.Signal = Elm.Native.Signal(elm);
+  var List = Elm.List(elm);
+  var _op = {};
+  _op['~'] = F2(function(sf, s){
+    return A3(Native.Signal.lift2, F2(function(f, x){
+      return f(x);}), sf, s);});
+  var sampleOn = Native.Signal.sampleOn;
+  var merges = Native.Signal.merges;
+  var merge = Native.Signal.merge;
+  var lift8 = Native.Signal.lift8;
+  var lift7 = Native.Signal.lift7;
+  var lift6 = Native.Signal.lift6;
+  var lift5 = Native.Signal.lift5;
+  var lift4 = Native.Signal.lift4;
+  var lift3 = Native.Signal.lift3;
+  var lift2 = Native.Signal.lift2;
+  var lift = Native.Signal.lift;
+  var keepWhen = Native.Signal.keepWhen;
+  var keepIf = Native.Signal.keepIf;
+  var foldp = Native.Signal.foldp;
+  var dropWhen = Native.Signal.dropWhen;
+  var dropRepeats = Native.Signal.dropRepeats;
+  var dropIf = Native.Signal.dropIf;
+  var countIf = Native.Signal.countIf;
+  var count = Native.Signal.count;
+  var constant = Native.Signal.constant;
+  var combine = A2(List.foldr, Native.Signal.lift2(F2(function(x, y){
+    return _L.Cons(x,y);})), Native.Signal.constant(_J.toList([])));
+  var Signal = {ctor:"Signal"};
+  _op['<~'] = F2(function(f, s){
+    return A2(Native.Signal.lift, f, s);});
+  return elm.Signal = {
+    _op : _op, 
+    constant : constant, 
+    lift : lift, 
+    lift2 : lift2, 
+    lift3 : lift3, 
+    lift4 : lift4, 
+    lift5 : lift5, 
+    lift6 : lift6, 
+    lift7 : lift7, 
+    lift8 : lift8, 
+    foldp : foldp, 
+    merge : merge, 
+    merges : merges, 
+    combine : combine, 
+    count : count, 
+    countIf : countIf, 
+    keepIf : keepIf, 
+    dropIf : dropIf, 
+    keepWhen : keepWhen, 
+    dropWhen : dropWhen, 
+    dropRepeats : dropRepeats, 
+    sampleOn : sampleOn, 
+    Signal : Signal};};
+Elm.Text = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Text';
+  var Basics = Elm.Basics(elm);
+  var Color = Elm.Color(elm);
+  var Graphics = Graphics || {};
+  Graphics.Element = Elm.Graphics.Element(elm);
+  var Maybe = Elm.Maybe(elm);
+  var JavaScript = Elm.JavaScript(elm);
+  var Native = Native || {};
+  Native.Text = Elm.Native.Text(elm);
+  var _op = {};
+  var underline = Native.Text.underline;
+  var typeface = Native.Text.typeface;
+  var toText = Native.Text.toText;
+  var text = Native.Text.text;
+  var strikeThrough = Native.Text.strikeThrough;
+  var righted = Native.Text.righted;
+  var plainText = Native.Text.plainText;
+  var overline = Native.Text.overline;
+  var monospace = Native.Text.monospace;
+  var link = Native.Text.link;
+  var justified = Native.Text.justified;
+  var italic = Native.Text.italic;
+  var height = Native.Text.height;
+  var header = Native.Text.header;
+  var color = Native.Text.color;
+  var centered = Native.Text.centered;
+  var bold = Native.Text.bold;
+  var asText = Native.Text.asText;
+  var Text = {ctor:"Text"};
+  return elm.Text = {
+    _op : _op, 
+    toText : toText, 
+    typeface : typeface, 
+    monospace : monospace, 
+    header : header, 
+    link : link, 
+    height : height, 
+    color : color, 
+    bold : bold, 
+    italic : italic, 
+    overline : overline, 
+    underline : underline, 
+    strikeThrough : strikeThrough, 
+    justified : justified, 
+    centered : centered, 
+    righted : righted, 
+    text : text, 
+    plainText : plainText, 
+    asText : asText, 
+    Text : Text};};
+Elm.Time = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Time';
+  var Basics = Elm.Basics(elm);
+  var Native = Native || {};
+  Native.Time = Elm.Native.Time(elm);
+  var Signal = Elm.Signal(elm);
+  var _op = {};
+  var timestamp = Native.Time.timestamp;
+  var since = Native.Time.since;
+  var millisecond = 1;
+  var second = (1000*millisecond);
+  var minute = (60*second);
+  var inSeconds = function(t){
+    return (t/second);};
+  var inMinutes = function(t){
+    return (t/minute);};
+  var inMilliseconds = function(t){
+    return t;};
+  var hour = (60*minute);
+  var inHours = function(t){
+    return (t/hour);};
+  var fpsWhen = Native.Time.fpsWhen;
+  var fps = Native.Time.fps;
+  var every = Native.Time.every;
+  var delay = Native.Time.delay;
+  return elm.Time = {
+    _op : _op, 
+    millisecond : millisecond, 
+    second : second, 
+    minute : minute, 
+    hour : hour, 
+    inMilliseconds : inMilliseconds, 
+    inSeconds : inSeconds, 
+    inMinutes : inMinutes, 
+    inHours : inHours, 
+    fps : fps, 
+    fpsWhen : fpsWhen, 
+    every : every, 
+    since : since, 
+    timestamp : timestamp, 
+    delay : delay};};
+Elm.Touch = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Touch';
+  var Signal = Elm.Signal(elm);
+  var Native = Native || {};
+  Native.Touch = Elm.Native.Touch(elm);
+  var Time = Elm.Time(elm);
+  var _op = {};
+  var touches = Native.Touch.touches;
+  var taps = Native.Touch.taps;
+  var Touch = F6(function(a, b, c, d, e, f){
+    return {
+      _:{
+      },
+      id:c,
+      t0:f,
+      x:a,
+      x0:d,
+      y:b,
+      y0:e};});
+  return elm.Touch = {
+    _op : _op, 
+    touches : touches, 
+    taps : taps};};
+Elm.WebSocket = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'WebSocket';
+  var Signal = Elm.Signal(elm);
+  var Basics = Elm.Basics(elm);
+  var Native = Native || {};
+  Native.WebSocket = Elm.Native.WebSocket(elm);
+  var _op = {};
+  var connect = Native.WebSocket.connect;
+  return elm.WebSocket = {
+    _op : _op, 
+    connect : connect};};
+Elm.Window = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Window';
+  var Signal = Elm.Signal(elm);
+  var Native = Native || {};
+  Native.Window = Elm.Native.Window(elm);
+  var _op = {};
+  var width = Native.Window.width;
+  var height = Native.Window.height;
+  var dimensions = Native.Window.dimensions;
+  return elm.Window = {
+    _op : _op, 
+    dimensions : dimensions, 
+    width : width, 
+    height : height};};
+Elm.Graphics = Elm.Graphics || {};
+Elm.Graphics.Collage = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Graphics.Collage';
+  var Basics = Elm.Basics(elm);
+  var List = Elm.List(elm);
+  var Either = Elm.Either(elm);
+  var Matrix2D = Elm.Matrix2D(elm);
+  var Native = Native || {};
+  Native.Graphics = Native.Graphics || {};
+  Native.Graphics.Collage = Elm.Native.Graphics.Collage(elm);
+  var Graphics = Graphics || {};
+  Graphics.Element = Elm.Graphics.Element(elm);
+  var Color = Elm.Color(elm);
+  var Maybe = Elm.Maybe(elm);
+  var JavaScript = Elm.JavaScript(elm);
+  var _op = {};
+  var segment = F2(function(p1, p2){
+    return _J.toList([p1,p2]);});
+  var scale = F2(function(s, f){
+    return _N.replace([['scale',(f.scale*s)]], f);});
+  var rotate = F2(function(t, f){
+    return _N.replace([['theta',(f.theta+t)]], f);});
+  var rect = F2(function(w, h){
+    return function(){
+      var hw = (w/2);
+      var hh = (h/2);
+      return _J.toList([{ctor:"_Tuple2", _0:(0-hw), _1:(0-hh)},{ctor:"_Tuple2", _0:(0-hw), _1:hh},{ctor:"_Tuple2", _0:hw, _1:hh},{ctor:"_Tuple2", _0:hw, _1:(0-hh)}]);}();});
+  var square = function(n){
+    return A2(rect, n, n);};
+  var polygon = function(points){
+    return points;};
+  var path = function(ps){
+    return ps;};
+  var oval = F2(function(w, h){
+    return function(){
+      var n = 50;
+      var t = ((2*Basics.pi)/n);
+      var hw = (w/2);
+      var hh = (h/2);
+      var f = function(i){
+        return {ctor:"_Tuple2", _0:(hw*Basics.cos((t*i))), _1:(hh*Basics.sin((t*i)))};};
+      return A2(List.map, f, _L.range(0,(n-1)));}();});
+  var ngon = F2(function(n, r){
+    return function(){
+      var m = Basics.toFloat(n);
+      var t = ((2*Basics.pi)/m);
+      var f = function(i){
+        return {ctor:"_Tuple2", _0:(r*Basics.cos((t*i))), _1:(r*Basics.sin((t*i)))};};
+      return A2(List.map, f, _L.range(0,(m-1)));}();});
+  var moveY = F2(function(y, f){
+    return _N.replace([['y',(f.y+y)]], f);});
+  var moveX = F2(function(x, f){
+    return _N.replace([['x',(f.x+x)]], f);});
+  var move = F2(function(arg2, f){
+    return function(){
+      switch (arg2.ctor) {
+        case '_Tuple2':
+          return _N.replace([['x',(f.x+arg2._0)],['y',(f.y+arg2._1)]], f);
+      }_E.Case($moduleName,'on line 142, column 20 to 48')}();});
+  var form = function(f){
+    return {
+      _:{
+      },
+      alpha:1,
+      form:f,
+      scale:1,
+      theta:0,
+      x:0,
+      y:0};};
+  var collage = Native.Graphics.Collage.collage;
+  var circle = function(r){
+    return A2(oval, (2*r), (2*r));};
+  var alpha = F2(function(a, f){
+    return _N.replace([['alpha',a]], f);});
+  var Texture = function(a){
+    return {ctor:"Texture", _0:a};};
+  var Solid = function(a){
+    return {ctor:"Solid", _0:a};};
+  var Smooth = {ctor:"Smooth"};
+  var Sharp = function(a){
+    return {ctor:"Sharp", _0:a};};
+  var Round = {ctor:"Round"};
+  var Padded = {ctor:"Padded"};
+  var LineStyle = F6(function(a, b, c, d, e, f){
+    return {
+      _:{
+      },
+      cap:c,
+      color:a,
+      dashOffset:f,
+      dashing:e,
+      join:d,
+      width:b};});
+  var Grad = function(a){
+    return {ctor:"Grad", _0:a};};
+  var Form = F6(function(a, b, c, d, e, f){
+    return {
+      _:{
+      },
+      alpha:e,
+      form:f,
+      scale:b,
+      theta:a,
+      x:c,
+      y:d};});
+  var Flat = {ctor:"Flat"};
+  var defaultLine = {
+    _:{
+    },
+    cap:Flat,
+    color:Color.black,
+    dashOffset:0,
+    dashing:_J.toList([]),
+    join:Sharp(10),
+    width:1};
+  var dashed = function(clr){
+    return _N.replace([['color',clr],['dashing',_J.toList([8,4])]], defaultLine);};
+  var dotted = function(clr){
+    return _N.replace([['color',clr],['dashing',_J.toList([3,3])]], defaultLine);};
+  var solid = function(clr){
+    return _N.replace([['color',clr]], defaultLine);};
+  var FShape = F2(function(a, b){
+    return {ctor:"FShape", _0:a, _1:b};});
+  var fill = F2(function(style, shape){
+    return form(A2(FShape, Either.Right(style), shape));});
+  var filled = F2(function(color, shape){
+    return A2(fill, Solid(color), shape);});
+  var gradient = F2(function(grad, shape){
+    return A2(fill, Grad(grad), shape);});
+  var textured = F2(function(src, shape){
+    return A2(fill, Texture(src), shape);});
+  var outlined = F2(function(style, shape){
+    return form(A2(FShape, Either.Left(style), shape));});
+  var FPath = F2(function(a, b){
+    return {ctor:"FPath", _0:a, _1:b};});
+  var traced = F2(function(style, path){
+    return form(A2(FPath, style, path));});
+  var FImage = F4(function(a, b, c, d){
+    return {ctor:"FImage", _0:a, _1:b, _2:c, _3:d};});
+  var sprite = F4(function(w, h, pos, src){
+    return form(A4(FImage, w, h, pos, src));});
+  var FGroup = F2(function(a, b){
+    return {ctor:"FGroup", _0:a, _1:b};});
+  var group = function(fs){
+    return form(A2(FGroup, Matrix2D.identity, fs));};
+  var groupTransform = F2(function(matrix, fs){
+    return form(A2(FGroup, matrix, fs));});
+  var FElement = function(a){
+    return {ctor:"FElement", _0:a};};
+  var toForm = function(e){
+    return form(FElement(e));};
+  var Clipped = {ctor:"Clipped"};
+  elm.Graphics = elm.Graphics || {};
+  return elm.Graphics.Collage = {
+    _op : _op, 
+    defaultLine : defaultLine, 
+    solid : solid, 
+    dashed : dashed, 
+    dotted : dotted, 
+    form : form, 
+    fill : fill, 
+    filled : filled, 
+    textured : textured, 
+    gradient : gradient, 
+    outlined : outlined, 
+    traced : traced, 
+    sprite : sprite, 
+    toForm : toForm, 
+    group : group, 
+    groupTransform : groupTransform, 
+    rotate : rotate, 
+    scale : scale, 
+    move : move, 
+    moveX : moveX, 
+    moveY : moveY, 
+    alpha : alpha, 
+    collage : collage, 
+    path : path, 
+    segment : segment, 
+    polygon : polygon, 
+    rect : rect, 
+    square : square, 
+    oval : oval, 
+    circle : circle, 
+    ngon : ngon, 
+    Solid : Solid, 
+    Texture : Texture, 
+    Grad : Grad, 
+    Flat : Flat, 
+    Round : Round, 
+    Padded : Padded, 
+    Smooth : Smooth, 
+    Sharp : Sharp, 
+    Clipped : Clipped, 
+    FPath : FPath, 
+    FShape : FShape, 
+    FImage : FImage, 
+    FElement : FElement, 
+    FGroup : FGroup};};
+Elm.Graphics = Elm.Graphics || {};
+Elm.Graphics.Element = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Graphics.Element';
+  var Basics = Elm.Basics(elm);
+  var Native = Native || {};
+  Native.Utils = Elm.Native.Utils(elm);
+  var JavaScript = Elm.JavaScript(elm);
+  var JavaScript = Elm.JavaScript(elm);
+  var List = Elm.List(elm);
+  var Color = Elm.Color(elm);
+  var Maybe = Elm.Maybe(elm);
+  var _op = {};
+  var widthOf = function(e){
+    return e.props.width;};
+  var tag = F2(function(name, e){
+    return function(){
+      var p = e.props;
+      return {
+        _:{
+        },
+        element:e.element,
+        props:_N.replace([['tag',JavaScript.fromString(name)]], p)};}();});
+  var sizeOf = function(e){
+    return {ctor:"_Tuple2", _0:e.props.width, _1:e.props.height};};
+  var opacity = F2(function(o, e){
+    return function(){
+      var p = e.props;
+      return {
+        _:{
+        },
+        element:e.element,
+        props:_N.replace([['opacity',o]], p)};}();});
+  var markdown = Native.Utils.undefined;
+  var link = F2(function(href, e){
+    return function(){
+      var p = e.props;
+      return {
+        _:{
+        },
+        element:e.element,
+        props:_N.replace([['href',JavaScript.fromString(href)]], p)};}();});
+  var heightOf = function(e){
+    return e.props.height;};
+  var emptyStr = JavaScript.fromString(_str(''));
+  var color = F2(function(c, e){
+    return function(){
+      var p = e.props;
+      return {
+        _:{
+        },
+        element:e.element,
+        props:_N.replace([['color',Maybe.Just(c)]], p)};}();});
+  var Z = {ctor:"Z"};
+  var middleAt = F2(function(x, y){
+    return {
+      _:{
+      },
+      horizontal:Z,
+      vertical:Z,
+      x:x,
+      y:y};});
+  var Tiled = {ctor:"Tiled"};
+  var Spacer = {ctor:"Spacer"};
+  var Relative = function(a){
+    return {ctor:"Relative", _0:a};};
+  var middle = {
+    _:{
+    },
+    horizontal:Z,
+    vertical:Z,
+    x:Relative(0.5),
+    y:Relative(0.5)};
+  var relative = Relative;
+  var RawHtml = function(a){
+    return {ctor:"RawHtml", _0:a};};
+  var Properties = F8(function(a, b, c, d, e, f, g, h){
+    return {
+      _:{
+      },
+      color:e,
+      height:c,
+      hover:h,
+      href:f,
+      id:a,
+      opacity:d,
+      tag:g,
+      width:b};});
+  var newElement = F3(function(w, h, e){
+    return {
+      _:{
+      },
+      element:e,
+      props:A8(Properties, Native.Utils.guid({ctor:"_Tuple0"}), w, h, 1, Maybe.Nothing, emptyStr, emptyStr, {ctor:"_Tuple0"})};});
+  var spacer = F2(function(w, h){
+    return A3(newElement, w, h, Spacer);});
+  var Position = F4(function(a, b, c, d){
+    return {
+      _:{
+      },
+      horizontal:a,
+      vertical:b,
+      x:c,
+      y:d};});
+  var Plain = {ctor:"Plain"};
+  var P = {ctor:"P"};
+  var midRightAt = F2(function(x, y){
+    return {
+      _:{
+      },
+      horizontal:P,
+      vertical:Z,
+      x:x,
+      y:y};});
+  var midTopAt = F2(function(x, y){
+    return {
+      _:{
+      },
+      horizontal:Z,
+      vertical:P,
+      x:x,
+      y:y};});
+  var topRightAt = F2(function(x, y){
+    return {
+      _:{
+      },
+      horizontal:P,
+      vertical:P,
+      x:x,
+      y:y};});
+  var N = {ctor:"N"};
+  var bottomLeftAt = F2(function(x, y){
+    return {
+      _:{
+      },
+      horizontal:N,
+      vertical:N,
+      x:x,
+      y:y};});
+  var bottomRightAt = F2(function(x, y){
+    return {
+      _:{
+      },
+      horizontal:P,
+      vertical:N,
+      x:x,
+      y:y};});
+  var midBottomAt = F2(function(x, y){
+    return {
+      _:{
+      },
+      horizontal:Z,
+      vertical:N,
+      x:x,
+      y:y};});
+  var midLeftAt = F2(function(x, y){
+    return {
+      _:{
+      },
+      horizontal:N,
+      vertical:Z,
+      x:x,
+      y:y};});
+  var topLeftAt = F2(function(x, y){
+    return {
+      _:{
+      },
+      horizontal:N,
+      vertical:P,
+      x:x,
+      y:y};});
+  var Image = F4(function(a, b, c, d){
+    return {ctor:"Image", _0:a, _1:b, _2:c, _3:d};});
+  var height = F2(function(nh, e){
+    return function(){
+      var p = e.props;
+      var props = function(){
+        var case0 = e.element;
+        switch (case0.ctor) {
+          case 'Image':
+            return _N.replace([['width',Basics.round(((Basics.toFloat(case0._1)/Basics.toFloat(case0._2))*Basics.toFloat(nh)))]], p);
+        }
+        return p;}();
+      return {
+        _:{
+        },
+        element:e.element,
+        props:_N.replace([['height',nh]], p)};}();});
+  var image = F3(function(w, h, src){
+    return A3(newElement, w, h, A4(Image, Plain, w, h, JavaScript.fromString(src)));});
+  var tiledImage = F3(function(w, h, src){
+    return A3(newElement, w, h, A4(Image, Tiled, w, h, JavaScript.fromString(src)));});
+  var width = F2(function(nw, e){
+    return function(){
+      var p = e.props;
+      var props = function(){
+        var case5 = e.element;
+        switch (case5.ctor) {
+          case 'Image':
+            return _N.replace([['height',Basics.round(((Basics.toFloat(case5._2)/Basics.toFloat(case5._1))*Basics.toFloat(nw)))]], p);
+          case 'RawHtml':
+            return _N.replace([['height',Basics.snd(A2(Native.Utils.htmlHeight, nw, case5._0))]], p);
+        }
+        return p;}();
+      return {
+        _:{
+        },
+        element:e.element,
+        props:_N.replace([['width',nw]], props)};}();});
+  var size = F3(function(w, h, e){
+    return A2(height, h, A2(width, w, e));});
+  var Flow = F2(function(a, b){
+    return {ctor:"Flow", _0:a, _1:b};});
+  var Fitted = {ctor:"Fitted"};
+  var fittedImage = F3(function(w, h, src){
+    return A3(newElement, w, h, A4(Image, Fitted, w, h, JavaScript.fromString(src)));});
+  var Element = F2(function(a, b){
+    return {
+      _:{
+      },
+      element:b,
+      props:a};});
+  var DUp = {ctor:"DUp"};
+  var up = DUp;
+  var DRight = {ctor:"DRight"};
+  var right = DRight;
+  var beside = F2(function(lft, rht){
+    return A3(newElement, (widthOf(lft)+widthOf(rht)), A2(Basics.max, heightOf(lft), heightOf(rht)), A2(Flow, right, _J.toList([lft,rht])));});
+  var DOut = {ctor:"DOut"};
+  var layers = function(es){
+    return function(){
+      var ws = A2(List.map, widthOf, es);
+      var hs = A2(List.map, heightOf, es);
+      return A3(newElement, List.maximum(ws), List.maximum(hs), A2(Flow, DOut, es));}();};
+  var outward = DOut;
+  var DLeft = {ctor:"DLeft"};
+  var left = DLeft;
+  var DIn = {ctor:"DIn"};
+  var inward = DIn;
+  var DDown = {ctor:"DDown"};
+  var above = F2(function(hi, lo){
+    return A3(newElement, A2(Basics.max, widthOf(hi), widthOf(lo)), (heightOf(hi)+heightOf(lo)), A2(Flow, DDown, _J.toList([hi,lo])));});
+  var below = F2(function(lo, hi){
+    return A3(newElement, A2(Basics.max, widthOf(hi), widthOf(lo)), (heightOf(hi)+heightOf(lo)), A2(Flow, DDown, _J.toList([hi,lo])));});
+  var down = DDown;
+  var flow = F2(function(dir, es){
+    return function(){
+      var ws = A2(List.map, widthOf, es);
+      var newFlow = F2(function(w, h){
+        return A3(newElement, w, h, A2(Flow, dir, es));});
+      var hs = A2(List.map, heightOf, es);
+      return (_N.eq(es,_J.toList([])) ? A2(spacer, 0, 0) : (Basics.otherwise ? function(){
+        switch (dir.ctor) {
+          case 'DDown':
+            return A2(newFlow, List.maximum(ws), List.sum(hs));
+          case 'DIn':
+            return A2(newFlow, List.maximum(ws), List.maximum(hs));
+          case 'DLeft':
+            return A2(newFlow, List.sum(ws), List.maximum(hs));
+          case 'DOut':
+            return A2(newFlow, List.maximum(ws), List.maximum(hs));
+          case 'DRight':
+            return A2(newFlow, List.sum(ws), List.maximum(hs));
+          case 'DUp':
+            return A2(newFlow, List.maximum(ws), List.sum(hs));
+        }_E.Case($moduleName,'between lines 159 and 165')}() : _E.If($moduleName,'between lines 158 and 165')));}();});
+  var Custom = {ctor:"Custom"};
+  var Cropped = function(a){
+    return {ctor:"Cropped", _0:a};};
+  var croppedImage = F4(function(pos, w, h, src){
+    return A3(newElement, w, h, A4(Image, Cropped(pos), w, h, JavaScript.fromString(src)));});
+  var Container = F2(function(a, b){
+    return {ctor:"Container", _0:a, _1:b};});
+  var container = F4(function(w, h, pos, e){
+    return A3(newElement, w, h, A2(Container, pos, e));});
+  var Absolute = function(a){
+    return {ctor:"Absolute", _0:a};};
+  var absolute = Absolute;
+  var midLeft = _N.replace([['horizontal',N],['x',Absolute(0)]], middle);
+  var midRight = _N.replace([['horizontal',P]], midLeft);
+  var midTop = _N.replace([['vertical',P],['y',Absolute(0)]], middle);
+  var midBottom = _N.replace([['vertical',N]], midTop);
+  var topLeft = {
+    _:{
+    },
+    horizontal:N,
+    vertical:P,
+    x:Absolute(0),
+    y:Absolute(0)};
+  var bottomLeft = _N.replace([['vertical',N]], topLeft);
+  var bottomRight = _N.replace([['horizontal',P]], bottomLeft);
+  var topRight = _N.replace([['horizontal',P]], topLeft);
+  elm.Graphics = elm.Graphics || {};
+  return elm.Graphics.Element = {
+    _op : _op, 
+    widthOf : widthOf, 
+    heightOf : heightOf, 
+    sizeOf : sizeOf, 
+    width : width, 
+    height : height, 
+    size : size, 
+    opacity : opacity, 
+    color : color, 
+    tag : tag, 
+    link : link, 
+    emptyStr : emptyStr, 
+    newElement : newElement, 
+    image : image, 
+    fittedImage : fittedImage, 
+    croppedImage : croppedImage, 
+    tiledImage : tiledImage, 
+    markdown : markdown, 
+    container : container, 
+    spacer : spacer, 
+    flow : flow, 
+    above : above, 
+    below : below, 
+    beside : beside, 
+    layers : layers, 
+    absolute : absolute, 
+    relative : relative, 
+    middle : middle, 
+    topLeft : topLeft, 
+    topRight : topRight, 
+    bottomLeft : bottomLeft, 
+    bottomRight : bottomRight, 
+    midLeft : midLeft, 
+    midRight : midRight, 
+    midTop : midTop, 
+    midBottom : midBottom, 
+    middleAt : middleAt, 
+    topLeftAt : topLeftAt, 
+    topRightAt : topRightAt, 
+    bottomLeftAt : bottomLeftAt, 
+    bottomRightAt : bottomRightAt, 
+    midLeftAt : midLeftAt, 
+    midRightAt : midRightAt, 
+    midTopAt : midTopAt, 
+    midBottomAt : midBottomAt, 
+    up : up, 
+    down : down, 
+    left : left, 
+    right : right, 
+    inward : inward, 
+    outward : outward, 
+    Image : Image, 
+    Container : Container, 
+    Flow : Flow, 
+    Spacer : Spacer, 
+    RawHtml : RawHtml, 
+    Custom : Custom, 
+    Plain : Plain, 
+    Fitted : Fitted, 
+    Cropped : Cropped, 
+    Tiled : Tiled, 
+    P : P, 
+    Z : Z, 
+    N : N, 
+    Absolute : Absolute, 
+    Relative : Relative, 
+    DUp : DUp, 
+    DDown : DDown, 
+    DLeft : DLeft, 
+    DRight : DRight, 
+    DIn : DIn, 
+    DOut : DOut};};
+Elm.Graphics = Elm.Graphics || {};
+Elm.Graphics.Input = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Graphics.Input';
+  var Basics = Elm.Basics(elm);
+  var Signal = Elm.Signal(elm);
+  var Native = Native || {};
+  Native.Graphics = Native.Graphics || {};
+  Native.Graphics.Input = Elm.Native.Graphics.Input(elm);
+  var List = Elm.List(elm);
+  var Graphics = Graphics || {};
+  Graphics.Element = Elm.Graphics.Element(elm);
+  var Color = Elm.Color(elm);
+  var Maybe = Elm.Maybe(elm);
+  var JavaScript = Elm.JavaScript(elm);
+  var _op = {};
+  var id = function(x){
+    return x;};
+  var hoverables = Native.Graphics.Input.hoverables;
+  var hoverable = function(elem){
+    return function(){
+      var pool = hoverables(false);
+      return {ctor:"_Tuple2", _0:A2(pool.hoverable, id, elem), _1:pool.events};}();};
+  var fields = Native.Graphics.Input.fields;
+  var emptyFieldState = {
     _:{
     },
     selectionEnd:0,
     selectionStart:0,
     string:_str('')};
-  elm.Native = elm.Native||{};
-  elm.Native.Graphics = elm.Native.Graphics||{};
-  var _ = elm.Native.Graphics.Input||{};
-  _.$op = {};
-  _.id = id_0;
-  _.button = button_1;
-  _.customButton = customButton_2;
-  _.checkbox = checkbox_3;
-  _.FieldState = FieldState_4;
-  _.emptyFieldState = emptyFieldState_5;
-  _.field = field_6;
-  _.password = password_7;
-  _.email = email_8;
-  _.stringDropDown = stringDropDown_9
-  elm.Graphics = elm.Graphics||{};
-  return elm.Graphics.Input = _;
-  };
-Elm.Graphics = Elm.Graphics||{};
-Elm.Graphics.Element = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var _ = Elm.Native.Utils(elm); var Native = Native||{};Native.Utils = _;
-  var guid = _.guid, max = _.max, htmlHeight = _.htmlHeight;
-  var JS = Elm.JavaScript(elm);
-  var List = Elm.List(elm);
-  var _ = Elm.Color(elm); var Color = _;
-  var _ = Elm.Maybe(elm); var Maybe = _;
-  var Just = _.Just, Nothing = _.Nothing;
-  var Image_14 = F4(function(a1, a2, a3, a4){
-    return {ctor:"Image", _0:a1, _1:a2, _2:a3, _3:a4};});
-  var Container_15 = F2(function(a1, a2){
-    return {ctor:"Container", _0:a1, _1:a2};});
-  var Flow_16 = F2(function(a1, a2){
-    return {ctor:"Flow", _0:a1, _1:a2};});
-  var Spacer_17 = {ctor:"Spacer"};
-  var RawHtml_18 = function(a1){
-    return {ctor:"RawHtml", _0:a1};};
-  var Custom_19 = {ctor:"Custom"};
-  var Plain_20 = {ctor:"Plain"};
-  var Fitted_21 = {ctor:"Fitted"};
-  var Cropped_22 = function(a1){
-    return {ctor:"Cropped", _0:a1};};
-  var Tiled_23 = {ctor:"Tiled"};
-  var P_28 = {ctor:"P"};
-  var Z_29 = {ctor:"Z"};
-  var N_30 = {ctor:"N"};
-  var Absolute_31 = function(a1){
-    return {ctor:"Absolute", _0:a1};};
-  var Relative_32 = function(a1){
-    return {ctor:"Relative", _0:a1};};
-  var DUp_36 = {ctor:"DUp"};
-  var DDown_37 = {ctor:"DDown"};
-  var DLeft_38 = {ctor:"DLeft"};
-  var DRight_39 = {ctor:"DRight"};
-  var DIn_40 = {ctor:"DIn"};
-  var DOut_41 = {ctor:"DOut"};
-  var Properties_0 = F7(function(id_73, width_74, height_75, opacity_76, color_77, href_78, tag_79){
-    return {
-      _:{
-      },
-      color:color_77,
-      height:height_75,
-      href:href_78,
-      id:id_73,
-      opacity:opacity_76,
-      tag:tag_79,
-      width:width_74};});
-  var Element_1 = F2(function(props_80, element_81){
-    return {
-      _:{
-      },
-      element:element_81,
-      props:props_80};});
-  var widthOf_2 = function(e_82){
-    return e_82.props.width;};
-  var heightOf_3 = function(e_83){
-    return e_83.props.height;};
-  var sizeOf_4 = function(e_84){
-    return {ctor:"Tuple2", _0:e_84.props.width, _1:e_84.props.height};};
-  var width_5 = F2(function(nw_85, e_86){
+  var field = function(placeHolder){
     return function(){
-      var p_87 = e_86.props;
-      var props_88 = function(){ 
-      var case0 = e_86.element;
-      switch (case0.ctor) {
-        case 'Image':
-          return _N.replace([['height',((case0._2/case0._1)*nw_85)]], p_87);
-        case 'RawHtml':
-          return _N.replace([['height',function(){
-            var _50000_92 = A2(htmlHeight, nw_85, case0._0);
-            var w_93 = function(){ 
-            switch (_50000_92.ctor) {
-              case 'Tuple2':
-                return _50000_92._0;
-            }_E.Case('Line 50, Column 71') }();
-            var h_94 = function(){ 
-            switch (_50000_92.ctor) {
-              case 'Tuple2':
-                return _50000_92._1;
-            }_E.Case('Line 50, Column 71') }();
-            return h_94;}()]], p_87);
+      var tfs = fields(emptyFieldState);
+      var changes = Signal.dropRepeats(tfs.events);
+      return {ctor:"_Tuple2", _0:A2(Signal.lift, A2(tfs.field, id, placeHolder), changes), _1:Signal.dropRepeats(A2(Signal.lift, function(_){
+        return _.string;}, changes))};}();};
+  var password = function(placeHolder){
+    return function(){
+      var tfs = Native.Graphics.Input.passwords(emptyFieldState);
+      var changes = Signal.dropRepeats(tfs.events);
+      return {ctor:"_Tuple2", _0:A2(Signal.lift, A2(tfs.field, id, placeHolder), changes), _1:Signal.dropRepeats(A2(Signal.lift, function(_){
+        return _.string;}, changes))};}();};
+  var email = function(placeHolder){
+    return function(){
+      var tfs = Native.Graphics.Input.emails(emptyFieldState);
+      var changes = Signal.dropRepeats(tfs.events);
+      return {ctor:"_Tuple2", _0:A2(Signal.lift, A2(tfs.field, id, placeHolder), changes), _1:Signal.dropRepeats(A2(Signal.lift, function(_){
+        return _.string;}, changes))};}();};
+  var dropDown = Native.Graphics.Input.dropDown;
+  var stringDropDown = function(strs){
+    return dropDown(A2(List.map, function(s){
+      return {ctor:"_Tuple2", _0:s, _1:s};}, strs));};
+  var customButtons = Native.Graphics.Input.customButtons;
+  var customButton = F3(function(up, hover, down){
+    return function(){
+      var pool = customButtons({ctor:"_Tuple0"});
+      return {ctor:"_Tuple2", _0:A4(pool.customButton, {ctor:"_Tuple0"}, up, hover, down), _1:pool.events};}();});
+  var checkboxes = Native.Graphics.Input.checkboxes;
+  var checkbox = function(b){
+    return function(){
+      var cbs = checkboxes(b);
+      return {ctor:"_Tuple2", _0:A2(Signal.lift, cbs.checkbox(id), cbs.events), _1:cbs.events};}();};
+  var buttons = Native.Graphics.Input.buttons;
+  var button = function(txt){
+    return function(){
+      var pool = buttons({ctor:"_Tuple0"});
+      return {ctor:"_Tuple2", _0:A2(pool.button, {ctor:"_Tuple0"}, txt), _1:pool.events};}();};
+  var FieldState = F3(function(a, b, c){
+    return {
+      _:{
+      },
+      selectionEnd:c,
+      selectionStart:b,
+      string:a};});
+  elm.Graphics = elm.Graphics || {};
+  return elm.Graphics.Input = {
+    _op : _op, 
+    id : id, 
+    buttons : buttons, 
+    button : button, 
+    customButtons : customButtons, 
+    customButton : customButton, 
+    checkboxes : checkboxes, 
+    checkbox : checkbox, 
+    hoverables : hoverables, 
+    hoverable : hoverable, 
+    fields : fields, 
+    emptyFieldState : emptyFieldState, 
+    field : field, 
+    password : password, 
+    email : email, 
+    dropDown : dropDown, 
+    stringDropDown : stringDropDown};};
+Elm.JavaScript = Elm.JavaScript || {};
+Elm.JavaScript.Experimental = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'JavaScript.Experimental';
+  var JavaScript = Elm.JavaScript(elm);
+  var Native = Native || {};
+  Native.JavaScript = Elm.Native.JavaScript(elm);
+  var _op = {};
+  var toRecord = Native.JavaScript.toRecord;
+  var fromRecord = Native.JavaScript.fromRecord;
+  elm.JavaScript = elm.JavaScript || {};
+  return elm.JavaScript.Experimental = {
+    _op : _op, 
+    toRecord : toRecord, 
+    fromRecord : fromRecord};};(function() {
+
+// Returns boolean indicating if the swap was successful.
+// Requires that the two signal graphs have exactly the same
+// structure.
+ElmRuntime.swap = function(from, to) {
+    function similar(nodeOld,nodeNew) {
+        idOkay = nodeOld.id === nodeNew.id;
+        lengthOkay = nodeOld.kids.length === nodeNew.kids.length;
+        return idOkay && lengthOkay;
+    }
+    function swap(nodeOld,nodeNew) {
+        nodeNew.value = nodeOld.value;
+        return true;
+    }
+    var canSwap = depthFirstTraversals(similar, from.inputs, to.inputs);
+    if (canSwap) { depthFirstTraversals(swap, from.inputs, to.inputs); }
+    from.node.parentNode.replaceChild(to.node, from.node);
+    return canSwap;
+}
+
+// Returns false if the node operation f ever fails.
+function depthFirstTraversals(f, queueOld, queueNew) {
+    if (queueOld.length !== queueNew.length) return false;
+    queueOld = queueOld.slice(0);
+    queueNew = queueNew.slice(0);
+
+    var seen = [];
+    while (queueOld.length > 0 && queueNew.length > 0) {
+        var nodeOld = queueOld.pop();
+        var nodeNew = queueNew.pop();
+        if (seen.indexOf(nodeOld.id) < 0) {
+            if (!f(nodeOld, nodeNew)) return false;
+            queueOld = queueOld.concat(nodeOld.kids);
+            queueNew = queueNew.concat(nodeNew.kids);
+            seen.push(nodeOld.id);
+        }
+    }
+    return true;
+}
+
+}());
+
+(function() {
+'use strict';
+
+Elm.fullscreen = function(module) {
+    var style = document.createElement('style');
+    style.type = 'text/css';
+    style.innerHTML = "html,head,body { padding:0; margin:0; }" +
+        "body { font-family: calibri, helvetica, arial, sans-serif; }";
+    document.head.appendChild(style);
+    var container = document.createElement('div');
+    document.body.appendChild(container);
+    return init(ElmRuntime.Display.FULLSCREEN, container, module);
+};
+
+Elm.domNode = function(container, module) {
+    var tag = container.tagName;
+    if (tag !== 'DIV') {
+        throw new Error('Elm.node must be given a DIV, not a ' + tag + '.');
+    } else if (container.hasChildNodes()) {
+        throw new Error('Elm.node must be given an empty DIV. No children allowed!');
+    }
+    return init(ElmRuntime.Display.COMPONENT, container, module);
+};
+
+Elm.worker = function(module) {
+    return init(ElmRuntime.Display.NONE, {}, module);
+};
+
+function init(display, container, module, moduleToReplace) {
+  // defining state needed for an instance of the Elm RTS
+  var inputs = [];
+
+  function notify(id, v) {
+      var timestep = Date.now();
+      var changed = false;
+      for (var i = inputs.length; i--; ) {
+          // order is important here to avoid short-circuiting
+          changed = inputs[i].recv(timestep, id, v) || changed;
       }
-      return p_87; }();
-      return {
-        _:{
-        },
-        element:e_86.element,
-        props:_N.replace([['width',nw_85]], props_88)};}();});
-  var height_6 = F2(function(nh_99, e_100){
-    return function(){
-      var p_101 = e_100.props;
-      var props_102 = function(){ 
-      var case12 = e_100.element;
-      switch (case12.ctor) {
-        case 'Image':
-          return _N.replace([['width',((case12._1/case12._2)*nh_99)]], p_101);
+      return changed;
+  }
+
+  container.offsetX = 0;
+  container.offsetY = 0;
+
+  var listeners = [];
+  function addListener(relevantInputs, domNode, eventName, func) {
+      domNode.addEventListener(eventName, func);
+      var listener = {
+          relevantInputs: relevantInputs,
+          domNode: domNode,
+          eventName: eventName,
+          func: func
+      };
+      listeners.push(listener);
+  }
+
+  // create the actual RTS. Any impure modules will attach themselves to this
+  // object. This permits many Elm programs to be embedded per document.
+  var elm = {
+      notify:notify,
+      node:container,
+      display:display,
+      id:ElmRuntime.guid(),
+      addListener:addListener,
+      inputs:inputs
+  };
+
+  // Set up methods to communicate with Elm program from JS.
+  function send(name, value) {
+      if (typeof value === 'undefined') return function(v) { return send(name,v); };
+      var e = document.createEvent('Event');
+      e.initEvent(name + '_' + elm.id, true, true);
+      e.value = value;
+      document.dispatchEvent(e);
+  }
+  function recv(name, handler) {
+      document.addEventListener(name + '_' + elm.id, handler);
+  }
+
+  recv('log', function(e) {console.log(e.value)});
+  recv('title', function(e) {document.title = e.value});
+  recv('redirect', function(e) {
+    if (e.value.length > 0) { window.location = e.value; }
+  });
+
+  function swap(newModule) {
+      removeListeners(listeners);
+      var div = document.createElement('div');
+      var newElm = init(display, div, newModule, elm);
+      inputs = [];
+      // elm.send = newElm.send;
+      // elm.recv = newElm.recv;
+      // elm.swap = newElm.swap;
+      return newElm;
+  }
+
+  var Module = {};
+  var reportAnyErrors = function() {};
+  try {
+      Module = module(elm);
+  } catch(e) {
+      var directions = "<br/>&nbsp; &nbsp; Open the developer console for more details."
+      Module.main = Elm.Text(elm).text('<code>' + e.message + directions + '</code>');
+      reportAnyErrors = function() { throw e; }
+  }
+  inputs = ElmRuntime.filterDeadInputs(inputs);
+  filterListeners(inputs, listeners);
+  if (display !== ElmRuntime.Display.NONE) {
+      var graphicsNode = initGraphics(elm, Module);
+  }
+  if (typeof moduleToReplace !== 'undefined') {
+      ElmRuntime.swap(moduleToReplace, elm);
+
+      // rerender scene if graphics are enabled.
+      if (typeof graphicsNode !== 'undefined') {
+          graphicsNode.value = A2( Elm.Graphics.Element(elm).spacer, 0, 0 );
+          graphicsNode.recv(0, true, 0);
       }
-      return p_101; }();
-      return {
-        _:{
-        },
-        element:e_100.element,
-        props:_N.replace([['height',nh_99]], p_101)};}();});
-  var size_7 = F3(function(w_105, h_106, e_107){
-    return A2(height_6, h_106, A2(width_5, w_105, e_107));});
-  var opacity_8 = F2(function(o_108, e_109){
-    return function(){
-      var p_110 = e_109.props;
-      return {
-        _:{
-        },
-        element:e_109.element,
-        props:_N.replace([['opacity',o_108]], p_110)};}();});
-  var color_9 = F2(function(c_111, e_112){
-    return function(){
-      var p_113 = e_112.props;
-      return {
-        _:{
-        },
-        element:e_112.element,
-        props:_N.replace([['color',Just(c_111)]], p_113)};}();});
-  var tag_10 = F2(function(name_114, e_115){
-    return function(){
-      var p_116 = e_115.props;
-      return {
-        _:{
-        },
-        element:e_115.element,
-        props:_N.replace([['tag',JS.fromString(name_114)]], p_116)};}();});
-  var link_11 = F2(function(href_117, e_118){
-    return function(){
-      var p_119 = e_118.props;
-      return {
-        _:{
-        },
-        element:e_118.element,
-        props:_N.replace([['href',JS.fromString(href_117)]], p_119)};}();});
-  var newElement_13 = F3(function(w_120, h_121, e_122){
-    return {
-      _:{
-      },
-      element:e_122,
-      props:A7(Properties_0, guid({ctor:"Tuple0"}), w_120, h_121, 1, Nothing, emptyStr_12, emptyStr_12)};});
-  var image_24 = F3(function(w_123, h_124, src_125){
-    return A3(newElement_13, w_123, h_124, A4(Image_14, Plain_20, w_123, h_124, JS.fromString(src_125)));});
-  var fittedImage_25 = F3(function(w_126, h_127, src_128){
-    return A3(newElement_13, w_126, h_127, A4(Image_14, Fitted_21, w_126, h_127, JS.fromString(src_128)));});
-  var croppedImage_26 = F4(function(pos_129, w_130, h_131, src_132){
-    return A3(newElement_13, w_130, h_131, A4(Image_14, Cropped_22(pos_129), w_130, h_131, JS.fromString(src_132)));});
-  var tiledImage_27 = F3(function(w_133, h_134, src_135){
-    return A3(newElement_13, w_133, h_134, A4(Image_14, Tiled_23, w_133, h_134, JS.fromString(src_135)));});
-  var Position_33 = F4(function(horizontal_136, vertical_137, x_138, y_139){
-    return {
-      _:{
-      },
-      horizontal:horizontal_136,
-      vertical:vertical_137,
-      x:x_138,
-      y:y_139};});
-  var container_34 = F4(function(w_140, h_141, pos_142, e_143){
-    return A3(newElement_13, w_140, h_141, A2(Container_15, pos_142, e_143));});
-  var spacer_35 = F2(function(w_144, h_145){
-    return A3(newElement_13, w_144, h_145, Spacer_17);});
-  var flow_42 = F2(function(dir_146, es_147){
-    return function(){
-      var newFlow_150 = F2(function(w_151, h_152){
-        return A3(newElement_13, w_151, h_152, A2(Flow_16, dir_146, es_147));});
-      var ws_148 = A2(List.map, widthOf_2, es_147);
-      var hs_149 = A2(List.map, heightOf_3, es_147);
-      return (_N.eq(es_147,_L.Nil)?A2(spacer_35, 0, 0):function(){ 
-      switch (dir_146.ctor) {
-        case 'DDown':
-          return A2(newFlow_150, List.maximum(ws_148), List.sum(hs_149));
-        case 'DIn':
-          return A2(newFlow_150, List.maximum(ws_148), List.maximum(hs_149));
-        case 'DLeft':
-          return A2(newFlow_150, List.sum(ws_148), List.maximum(hs_149));
-        case 'DOut':
-          return A2(newFlow_150, List.maximum(ws_148), List.maximum(hs_149));
-        case 'DRight':
-          return A2(newFlow_150, List.sum(ws_148), List.maximum(hs_149));
-        case 'DUp':
-          return A2(newFlow_150, List.maximum(ws_148), List.sum(hs_149));
-      }_E.Case('Line 160, Column 3') }());}();});
-  var above_43 = F2(function(hi_153, lo_154){
-    return A3(newElement_13, A2(max, widthOf_2(hi_153), widthOf_2(lo_154)), (heightOf_3(hi_153)+heightOf_3(lo_154)), A2(Flow_16, DDown_37, _L.Cons(hi_153,_L.Cons(lo_154,_L.Nil))));});
-  var below_44 = F2(function(lo_155, hi_156){
-    return A3(newElement_13, A2(max, widthOf_2(hi_156), widthOf_2(lo_155)), (heightOf_3(hi_156)+heightOf_3(lo_155)), A2(Flow_16, DDown_37, _L.Cons(hi_156,_L.Cons(lo_155,_L.Nil))));});
-  var beside_45 = F2(function(lft_157, rht_158){
-    return A3(newElement_13, (widthOf_2(lft_157)+widthOf_2(rht_158)), A2(max, heightOf_3(lft_157), heightOf_3(rht_158)), A2(Flow_16, right_70, _L.Cons(lft_157,_L.Cons(rht_158,_L.Nil))));});
-  var layers_46 = function(es_159){
-    return function(){
-      var ws_160 = A2(List.map, widthOf_2, es_159);
-      var hs_161 = A2(List.map, heightOf_3, es_159);
-      return A3(newElement_13, List.maximum(ws_160), List.maximum(hs_161), A2(Flow_16, DOut_41, es_159));}();};
-  var middleAt_58 = F2(function(x_162, y_163){
-    return {
-      _:{
-      },
-      horizontal:Z_29,
-      vertical:Z_29,
-      x:x_162,
-      y:y_163};});
-  var topLeftAt_59 = F2(function(x_164, y_165){
-    return {
-      _:{
-      },
-      horizontal:N_30,
-      vertical:P_28,
-      x:x_164,
-      y:y_165};});
-  var topRightAt_60 = F2(function(x_166, y_167){
-    return {
-      _:{
-      },
-      horizontal:P_28,
-      vertical:P_28,
-      x:x_166,
-      y:y_167};});
-  var bottomLeftAt_61 = F2(function(x_168, y_169){
-    return {
-      _:{
-      },
-      horizontal:N_30,
-      vertical:N_30,
-      x:x_168,
-      y:y_169};});
-  var bottomRightAt_62 = F2(function(x_170, y_171){
-    return {
-      _:{
-      },
-      horizontal:P_28,
-      vertical:N_30,
-      x:x_170,
-      y:y_171};});
-  var midLeftAt_63 = F2(function(x_172, y_173){
-    return {
-      _:{
-      },
-      horizontal:N_30,
-      vertical:Z_29,
-      x:x_172,
-      y:y_173};});
-  var midRightAt_64 = F2(function(x_174, y_175){
-    return {
-      _:{
-      },
-      horizontal:P_28,
-      vertical:Z_29,
-      x:x_174,
-      y:y_175};});
-  var midTopAt_65 = F2(function(x_176, y_177){
-    return {
-      _:{
-      },
-      horizontal:Z_29,
-      vertical:P_28,
-      x:x_176,
-      y:y_177};});
-  var midBottomAt_66 = F2(function(x_178, y_179){
-    return {
-      _:{
-      },
-      horizontal:Z_29,
-      vertical:N_30,
-      x:x_178,
-      y:y_179};});
-  var emptyStr_12 = JS.fromString(_str(''));
-  var absolute_47 = Absolute_31;
-  var relative_48 = Relative_32;
-  var middle_49 = {
-    _:{
-    },
-    horizontal:Z_29,
-    vertical:Z_29,
-    x:Relative_32(0.5),
-    y:Relative_32(0.5)};
-  var topLeft_50 = {
-    _:{
-    },
-    horizontal:N_30,
-    vertical:P_28,
-    x:Absolute_31(0),
-    y:Absolute_31(0)};
-  var topRight_51 = _N.replace([['horizontal',P_28]], topLeft_50);
-  var bottomLeft_52 = _N.replace([['vertical',N_30]], topLeft_50);
-  var bottomRight_53 = _N.replace([['horizontal',P_28]], bottomLeft_52);
-  var midLeft_54 = _N.replace([['horizontal',N_30],['x',Absolute_31(0)]], middle_49);
-  var midRight_55 = _N.replace([['horizontal',P_28]], midLeft_54);
-  var midTop_56 = _N.replace([['vertical',P_28],['y',Absolute_31(0)]], middle_49);
-  var midBottom_57 = _N.replace([['vertical',N_30]], midTop_56);
-  var up_67 = DUp_36;
-  var down_68 = DDown_37;
-  var left_69 = DLeft_38;
-  var right_70 = DRight_39;
-  var inward_71 = DIn_40;
-  var outward_72 = DOut_41;
-  elm.Native = elm.Native||{};
-  elm.Native.Graphics = elm.Native.Graphics||{};
-  var _ = elm.Native.Graphics.Element||{};
-  _.$op = {};
-  _.widthOf = widthOf_2;
-  _.heightOf = heightOf_3;
-  _.sizeOf = sizeOf_4;
-  _.width = width_5;
-  _.height = height_6;
-  _.size = size_7;
-  _.opacity = opacity_8;
-  _.color = color_9;
-  _.tag = tag_10;
-  _.link = link_11;
-  _.newElement = newElement_13;
-  _.image = image_24;
-  _.fittedImage = fittedImage_25;
-  _.croppedImage = croppedImage_26;
-  _.tiledImage = tiledImage_27;
-  _.container = container_34;
-  _.spacer = spacer_35;
-  _.flow = flow_42;
-  _.above = above_43;
-  _.below = below_44;
-  _.beside = beside_45;
-  _.layers = layers_46;
-  _.absolute = absolute_47;
-  _.relative = relative_48;
-  _.middle = middle_49;
-  _.topLeft = topLeft_50;
-  _.topRight = topRight_51;
-  _.bottomLeft = bottomLeft_52;
-  _.bottomRight = bottomRight_53;
-  _.midLeft = midLeft_54;
-  _.midRight = midRight_55;
-  _.midTop = midTop_56;
-  _.midBottom = midBottom_57;
-  _.middleAt = middleAt_58;
-  _.topLeftAt = topLeftAt_59;
-  _.topRightAt = topRightAt_60;
-  _.bottomLeftAt = bottomLeftAt_61;
-  _.bottomRightAt = bottomRightAt_62;
-  _.midLeftAt = midLeftAt_63;
-  _.midRightAt = midRightAt_64;
-  _.midTopAt = midTopAt_65;
-  _.midBottomAt = midBottomAt_66;
-  _.up = up_67;
-  _.down = down_68;
-  _.left = left_69;
-  _.right = right_70;
-  _.inward = inward_71;
-  _.outward = outward_72
-  elm.Graphics = elm.Graphics||{};
-  return elm.Graphics.Element = _;
-  };
-Elm.Graphics = Elm.Graphics||{};
-Elm.Graphics.Collage = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _str = N.JavaScript(elm).toString;
-  var $op = {};
-  var _ = Elm.List(elm); var List = _;
-  var _ = Elm.Native.Utils(elm); var Native = Native||{};Native.Utils = _;
-  var toFloat = _.toFloat;
-  var _ = Elm.Either(elm); var Either = _;
-  var Matrix = Elm.Native.Matrix2D(elm);
-  var N = Elm.Native.Graphics.Collage(elm);
-  var _ = Elm.Graphics.Element(elm); var Graphics = Graphics||{};Graphics.Element = _;
-  var _ = Elm.Color(elm); var Color = _;
-  var Solid_1 = function(a1){
-    return {ctor:"Solid", _0:a1};};
-  var Texture_2 = function(a1){
-    return {ctor:"Texture", _0:a1};};
-  var Gradient_3 = function(a1){
-    return {ctor:"Gradient", _0:a1};};
-  var Flat_4 = {ctor:"Flat"};
-  var Round_5 = {ctor:"Round"};
-  var Padded_6 = {ctor:"Padded"};
-  var Smooth_7 = {ctor:"Smooth"};
-  var Sharp_8 = function(a1){
-    return {ctor:"Sharp", _0:a1};};
-  var Clipped_9 = {ctor:"Clipped"};
-  var FPath_15 = F2(function(a1, a2){
-    return {ctor:"FPath", _0:a1, _1:a2};});
-  var FShape_16 = F2(function(a1, a2){
-    return {ctor:"FShape", _0:a1, _1:a2};});
-  var FImage_17 = F4(function(a1, a2, a3, a4){
-    return {ctor:"FImage", _0:a1, _1:a2, _2:a3, _3:a4};});
-  var FElement_18 = function(a1){
-    return {ctor:"FElement", _0:a1};};
-  var FGroup_19 = F2(function(a1, a2){
-    return {ctor:"FGroup", _0:a1, _1:a2};});
-  var Form_0 = F5(function(theta_44, scale_45, x_46, y_47, form_48){
-    return {
-      _:{
-      },
-      form:form_48,
-      scale:scale_45,
-      theta:theta_44,
-      x:x_46,
-      y:y_47};});
-  var LineStyle_10 = F6(function(color_49, width_50, cap_51, join_52, dashing_53, dashOffset_54){
-    return {
-      _:{
-      },
-      cap:cap_51,
-      color:color_49,
-      dashOffset:dashOffset_54,
-      dashing:dashing_53,
-      join:join_52,
-      width:width_50};});
-  var solid_12 = function(clr_55){
-    return _N.replace([['color',clr_55]], defaultLine_11);};
-  var dashed_13 = function(clr_56){
-    return _N.replace([['color',clr_56],['dashing',_L.Cons(8,_L.Cons(4,_L.Nil))]], defaultLine_11);};
-  var dotted_14 = function(clr_57){
-    return _N.replace([['color',clr_57],['dashing',_L.Cons(3,_L.Cons(3,_L.Nil))]], defaultLine_11);};
-  var form_20 = function(f_58){
-    return {
-      _:{
-      },
-      form:f_58,
-      scale:1,
-      theta:0,
-      x:0,
-      y:0};};
-  var fill_21 = F2(function(style_59, shape_60){
-    return form_20(A2(FShape_16, Either.Right(style_59), shape_60));});
-  var filled_22 = F2(function(color_61, shape_62){
-    return A2(fill_21, Solid_1(color_61), shape_62);});
-  var textured_23 = F2(function(src_63, shape_64){
-    return A2(fill_21, Texture_2(src_63), shape_64);});
-  var gradient_24 = F2(function(grad_65, shape_66){
-    return A2(fill_21, Gradient_3(grad_65), shape_66);});
-  var outlined_25 = F2(function(style_67, shape_68){
-    return form_20(A2(FShape_16, Either.Left(style_67), shape_68));});
-  var traced_26 = F2(function(style_69, path_70){
-    return form_20(A2(FPath_15, style_69, path_70));});
-  var sprite_27 = F4(function(w_71, h_72, pos_73, src_74){
-    return form_20(A4(FImage_17, w_71, h_72, pos_73, src_74));});
-  var toForm_28 = function(e_75){
-    return form_20(FElement_18(e_75));};
-  var group_29 = function(fs_76){
-    return form_20(A2(FGroup_19, Matrix.identity, fs_76));};
-  var groupTransform_30 = F2(function(matrix_77, fs_78){
-    return form_20(A2(FGroup_19, matrix_77, fs_78));});
-  var rotate_31 = F2(function(t_79, f_80){
-    return _N.replace([['theta',(f_80.theta+t_79)]], f_80);});
-  var scale_32 = F2(function(s_81, f_82){
-    return _N.replace([['scale',(f_82.scale*s_81)]], f_82);});
-  var move_33 = F2(function(_138000_83, f_84){
-    return function(){ 
-    switch (_138000_83.ctor) {
-      case 'Tuple2':
-        return _N.replace([['x',(f_84.x+_138000_83._0)],['y',(f_84.y+_138000_83._1)]], f_84);
-    }_E.Case('Line 138, Column 20') }();});
-  var moveX_34 = F2(function(x_87, f_88){
-    return _N.replace([['x',(f_88.x+x_87)]], f_88);});
-  var moveY_35 = F2(function(y_89, f_90){
-    return _N.replace([['y',(f_90.y+y_89)]], f_90);});
-  var path_36 = function(ps_91){
-    return ps_91;};
-  var segment_37 = F2(function(p1_92, p2_93){
-    return _L.Cons(p1_92,_L.Cons(p2_93,_L.Nil));});
-  var polygon_38 = function(points_94){
-    return points_94;};
-  var rect_39 = F2(function(w_95, h_96){
-    return function(){
-      var hw_97 = (w_95/2);
-      var hh_98 = (h_96/2);
-      return _L.Cons({ctor:"Tuple2", _0:(0-hw_97), _1:(0-hh_98)},_L.Cons({ctor:"Tuple2", _0:(0-hw_97), _1:hh_98},_L.Cons({ctor:"Tuple2", _0:hw_97, _1:hh_98},_L.Cons({ctor:"Tuple2", _0:hw_97, _1:(0-hh_98)},_L.Nil))));}();});
-  var square_40 = function(n_99){
-    return A2(rect_39, n_99, n_99);};
-  var oval_41 = F2(function(w_100, h_101){
-    return function(){
-      var f_106 = function(i_107){
-        return {ctor:"Tuple2", _0:(hw_104*Math.cos((t_103*i_107))), _1:(hh_105*Math.sin((t_103*i_107)))};};
-      var n_102 = 50;
-      var t_103 = ((2*Math.PI)/n_102);
-      var hw_104 = (w_100/2);
-      var hh_105 = (h_101/2);
-      return A2(List.map, f_106, _L.range(0,(n_102-1)));}();});
-  var circle_42 = function(r_108){
-    return A2(oval_41, (2*r_108), (2*r_108));};
-  var ngon_43 = F2(function(n_109, r_110){
-    return function(){
-      var f_113 = function(i_114){
-        return {ctor:"Tuple2", _0:(r_110*Math.cos((t_112*i_114))), _1:(r_110*Math.sin((t_112*i_114)))};};
-      var m_111 = toFloat(n_109);
-      var t_112 = ((2*Math.PI)/m_111);
-      return A2(List.map, f_113, _L.range(0,(n_109-1)));}();});
-  var defaultLine_11 = {
-    _:{
-    },
-    cap:Flat_4,
-    color:Color.black,
-    dashOffset:0,
-    dashing:_L.Nil,
-    join:Sharp_8(10),
-    width:1};
-  elm.Native = elm.Native||{};
-  elm.Native.Graphics = elm.Native.Graphics||{};
-  var _ = elm.Native.Graphics.Collage||{};
-  _.$op = {};
-  _.Form = Form_0;
-  _.Solid = Solid_1;
-  _.Texture = Texture_2;
-  _.Gradient = Gradient_3;
-  _.Flat = Flat_4;
-  _.Round = Round_5;
-  _.Padded = Padded_6;
-  _.Smooth = Smooth_7;
-  _.Sharp = Sharp_8;
-  _.Clipped = Clipped_9;
-  _.LineStyle = LineStyle_10;
-  _.defaultLine = defaultLine_11;
-  _.solid = solid_12;
-  _.dashed = dashed_13;
-  _.dotted = dotted_14;
-  _.FPath = FPath_15;
-  _.FShape = FShape_16;
-  _.FImage = FImage_17;
-  _.FElement = FElement_18;
-  _.FGroup = FGroup_19;
-  _.form = form_20;
-  _.fill = fill_21;
-  _.filled = filled_22;
-  _.textured = textured_23;
-  _.gradient = gradient_24;
-  _.outlined = outlined_25;
-  _.traced = traced_26;
-  _.sprite = sprite_27;
-  _.toForm = toForm_28;
-  _.group = group_29;
-  _.groupTransform = groupTransform_30;
-  _.rotate = rotate_31;
-  _.scale = scale_32;
-  _.move = move_33;
-  _.moveX = moveX_34;
-  _.moveY = moveY_35;
-  _.path = path_36;
-  _.segment = segment_37;
-  _.polygon = polygon_38;
-  _.rect = rect_39;
-  _.square = square_40;
-  _.oval = oval_41;
-  _.circle = circle_42;
-  _.ngon = ngon_43
-  elm.Graphics = elm.Graphics||{};
-  return elm.Graphics.Collage = _;
-  };
+  }
+
+  reportAnyErrors();
+  return { send:send, recv:recv, swap:swap };
+};
+
+function filterListeners(inputs, listeners) {
+    loop:
+    for (var i = listeners.length; i--; ) {
+        var listener = listeners[i];
+        for (var j = inputs.length; j--; ) {
+            if (listener.relevantInputs.indexOf(inputs[j].id) >= 0) {
+                continue loop;
+            }
+        }
+        listener.domNode.removeEventListener(listener.eventName, listener.func);
+    }
+}
+
+function removeListeners(listeners) {
+    for (var i = listeners.length; i--; ) {
+        var listener = listeners[i];
+        listener.domNode.removeEventListener(listener.eventName, listener.func);
+    }
+}
+
+function initGraphics(elm, Module) {
+  if (!('main' in Module))
+      throw new Error("'main' is missing! What do I display?!");
+
+  var signalGraph = Module.main;
+
+  // make sure the signal graph is actually a signal & extract the visual model
+  var Signal = Elm.Signal(elm);
+  if (!('recv' in signalGraph)) {
+      signalGraph = Signal.constant(signalGraph);
+  }
+  var currentScene = signalGraph.value;
+  
+ // Add the currentScene to the DOM
+  var Render = ElmRuntime.use(ElmRuntime.Render.Element);
+  elm.node.appendChild(Render.render(currentScene));
+  
+  // set up updates so that the DOM is adjusted as necessary.
+  function domUpdate(newScene, currentScene) {
+      ElmRuntime.draw(function(_) {
+          Render.update(elm.node.firstChild, currentScene, newScene);
+          if (elm.Native.Window) elm.Native.Window.resizeIfNeeded();
+      });
+      return newScene;
+  }
+  var renderer = A3(Signal.foldp, F2(domUpdate), currentScene, signalGraph);
+
+  // must check for resize after 'renderer' is created so
+  // that changes show up.
+  if (elm.Native.Window) elm.Native.Window.resizeIfNeeded();
+
+  return renderer;
+}
+
+}());
 (function() {
 'use strict';
 
@@ -4383,429 +5063,6 @@ if (window.requestAnimationFrame && window.cancelAnimationFrame) {
 
 }());
 
-(function() {
-'use strict';
-
-Elm.fullscreen = function(module) {
-    var style = document.createElement('style');
-    style.type = 'text/css';
-    style.innerHTML = "html,head,body { padding:0; margin:0; }" +
-        "body { font-family: calibri, helvetica, arial, sans-serif; }";
-    document.head.appendChild(style);
-    var container = document.createElement('div');
-    document.body.appendChild(container);
-    return init(ElmRuntime.Display.FULLSCREEN, container, module);
-};
-
-Elm.byId = function(id, module) {
-    var container = document.getElementById(id);
-    var tag = container.tagName;
-    if (tag !== 'DIV') {
-        throw new Error('Elm.byId must be given a div, not a ' + tag + '.');
-    }
-    while (container.hasChildNodes()) {
-        container.removeChild(container.lastChild);
-    }
-    return init(ElmRuntime.Display.COMPONENT, container, module);
-};
-
-Elm.worker = function(module) {
-    return init(ElmRuntime.Display.NONE, {}, module);
-};
-
-function init(display, container, module) {
-  // defining state needed for an instance of the Elm RTS
-  var signalGraph = null;
-  var inputs = [];
-  var visualModel = null;
-
-  function notify(id, v) {
-    var timestep = Date.now();
-    var hasListener = false;
-    for (var i = inputs.length; i--; ) {
-      // must maintain the order of this stmt to avoid having the ||
-      // short-circuiting the necessary work of recv
-      hasListener = inputs[i].recv(timestep, id, v) || hasListener;
-    }
-    return hasListener;
-  }
-
-  container.offsetX = 0;
-  container.offsetY = 0;
-
-  // create the actual RTS. Any impure modules will attach themselves to this
-  // object. This permits many Elm programs to be embedded per document.
-  var elm = { notify:notify,
-              node:container,
-              display:display,
-              id:ElmRuntime.guid(),
-              inputs:inputs
-  };
-
-  // Set up methods to communicate with Elm program from JS.
-  function send(name, value) {
-      if (typeof value === 'undefined') return function(v) { return send(name,v); };
-      var e = document.createEvent('Event');
-      e.initEvent(name + '_' + elm.id, true, true);
-      e.value = value;
-      document.dispatchEvent(e);
-  }
-  function recv(name, handler) {
-      document.addEventListener(name + '_' + elm.id, handler);
-  }
-
-  recv('log', function(e) {console.log(e.value)});
-  recv('title', function(e) {document.title = e.value});
-  recv('redirect', function(e) {
-    if (e.value.length > 0) { window.location = e.value; }
-  });
-
-  // If graphics are not enabled, escape early, skip over setting up DOM stuff.
-  if (display === ElmRuntime.Display.NONE) {
-      module(elm);
-      return { send : send, recv : recv };
-  }
-
-  var Render = ElmRuntime.use(ElmRuntime.Render.Element);
-
-  // evaluate the given module and extract its 'main' value.
-  signalGraph = module(elm).main;
-
-  // make sure the signal graph is actually a signal, extract the visual model,
-  // and filter out any unused inputs.
-  var Signal = Elm.Signal(elm);
-  if (!('recv' in signalGraph)) signalGraph = Signal.constant(signalGraph);
-  visualModel = signalGraph.value;
-  inputs = ElmRuntime.filterDeadInputs(inputs);
-  
-   // Add the visualModel to the DOM
-  container.appendChild(Render.render(visualModel));
-  if (elm.Native.Window) elm.Native.Window.resizeIfNeeded();
-  
-  // set up updates so that the DOM is adjusted as necessary.
-  var update = Render.update;
-  function domUpdate(value) {
-      ElmRuntime.draw(function(_) {
-              update(container.firstChild, visualModel, value);
-              visualModel = value;
-              if (elm.Native.Window) elm.Native.Window.resizeIfNeeded();
-          });
-      return value;
-  }
-
-  signalGraph = A2(Signal.lift, domUpdate, signalGraph);
-    
-  return { send : send, recv : recv, node : container };
-};
-
-}());
-ElmRuntime.Render.Utils = function() {
-'use strict';
-
-function newElement(elementType) {
-    var e = document.createElement(elementType);    
-    e.style.padding = "0";
-    e.style.margin = "0";
-    return e;
-}
-
-function addTo(container, elem) {
-    container.appendChild(elem);
-}
-
-function extract(c) {
-    if (c._3 === 1) { return 'rgb(' + c._0 + ',' + c._1 + ',' + c._2 + ')'; }
-    return 'rgba(' + c._0 + ',' + c._1 + ',' + c._2 + ',' + c._3 + ')';
-}
-
-function addTransform(style, trans) {
-  style.transform       = trans;
-  style.msTransform     = trans;
-  style.MozTransform    = trans;
-  style.webkitTransform = trans;
-  style.OTransform      = trans;
-}
-
-function removeTransform(style) {
-  style.transform       = 'none';
-  style.msTransform     = 'none';
-  style.MozTransform    = 'none';
-  style.webkitTransform = 'none';
-  style.OTransform      = 'none';
-}
-
-var List = Elm.Native.List({});
-
-return {addTo:addTo,
-	newElement:newElement,
-	extract : extract,
-	fromList: List.toArray,
-	fromString: function(s) { return List.toArray(s).join(''); },
-	toString: List.fromArray,
-	eq: Elm.Native.Utils({}).eq,
-	addTransform: addTransform,
-	removeTransform: removeTransform
-	};
-};
-
-ElmRuntime.Render.Element = function() {
-'use strict';
-
-var Utils = ElmRuntime.use(ElmRuntime.Render.Utils);
-var newElement = Utils.newElement, extract = Utils.extract,
-    addTransform = Utils.addTransform, removeTransform = Utils.removeTransform,
-    fromList = Utils.fromList, eq = Utils.eq;
-
-function setProps(props, e) {
-    e.style.width  = (props.width |0) + 'px';
-    e.style.height = (props.height|0) + 'px';
-    if (props.opacity !== 1) { e.style.opacity = props.opacity; }
-    if (props.color.ctor === 'Just') {
-	e.style.backgroundColor = extract(props.color._0);
-    }
-    if (props.tag !== '') { e.id = props.tag; }
-    if (props.href !== '') {
-	var a = newElement('a');
-	a.href = props.href;
-	a.appendChild(e);
-	return a;
-    }
-    return e;
-}
-
-function image(props, img) {
-    switch (img._0.ctor) {
-    case 'Plain':   return plainImage(img._3);
-    case 'Fitted':  return fittedImage(props.width, props.height, img._3);
-    case 'Cropped': return croppedImage(img,props.width,props.height,img._3);
-    case 'Tiled':   return tiledImage(img._3);
-    }
-}
-
-function plainImage(src) {
-    var img = newElement('img');
-    img.src = src;
-    img.name = src;
-    img.style.display = "block";
-    return img;
-}
-
-function tiledImage(src) {
-    var div = newElement('div');
-    div.style.backgroundImage = 'url(' + src + ')';
-    return div;
-}
-
-function fittedImage(w, h, src) {
-    var div = newElement('div');
-    div.style.background = 'url(' + src + ') no-repeat center';
-    div.style.webkitBackgroundSize = 'cover';
-    div.style.MozBackgroundSize = 'cover';
-    div.style.OBackgroundSize = 'cover';
-    div.style.backgroundSize = 'cover';
-    return div;
-}
-
-function croppedImage(elem, w, h, src) {
-    var pos = elem._0._0;
-    var e = newElement('div');
-    e.style.position = "relative";
-    e.style.overflow = "hidden";
-
-    var img = newElement('img');
-    img.onload = function() {
-	img.style.position = 'absolute';
-	img.style.margin = 'auto';
-	var sw = w / elem._1, sh = h / elem._2;
-	img.style.width = ((this.width * sw)|0) + 'px';
-	img.style.height = ((this.height * sh)|0) + 'px';
-	img.style.left = ((- pos._0 * sw)|0) + 'px';
-	img.style.top = ((- pos._1 * sh)|0) + 'px';
-    };
-    img.src = src;
-    img.name = src;
-    e.appendChild(img);
-    return e;
-}
-
-function goIn(e) { e.style.position = 'absolute'; return e; }
-function goDown(e) { return e }
-function goRight(e) { e.style.styleFloat = e.style.cssFloat = "left"; return e; }
-function flowWith(f, array) {
-    var container = newElement('div');
-    for (var i = array.length; i--; ) {
-	container.appendChild(f(render(array[i])));
-    }
-    return container;
-}
-
-function flow(dir,elist) {
-    var array = fromList(elist);
-    switch(dir.ctor) {
-    case "DDown":  array.reverse();
-    case "DUp":    return flowWith(goDown,array);
-    case "DRight": array.reverse();
-    case "DLeft":  return flowWith(goRight,array);
-    case "DOut":   array.reverse();
-    case "DIn":    return flowWith(goIn,array);
-    }
-}
-
-function toPos(pos) {
-    switch(pos.ctor) {
-    case "Absolute": return  pos._0 + "px";
-    case "Relative": return (pos._0 * 100) + "%";
-    }
-}
-
-function setPos(pos,w,h,e) {
-    e.style.position = 'absolute';
-    e.style.margin = 'auto';
-    var transform = '';
-    switch(pos.horizontal.ctor) {
-    case 'P': e.style.right = toPos(pos.x); break;
-    case 'Z': transform = 'translateX(' + ((-w/2)|0) + 'px) ';
-    case 'N': e.style.left = toPos(pos.x); break;
-    }
-    switch(pos.vertical.ctor) {
-    case 'N': e.style.bottom = toPos(pos.y); break;
-    case 'Z': transform += 'translateY(' + ((-h/2)|0) + 'px)';
-    case 'P': e.style.top = toPos(pos.y); break;
-    }
-    if (transform !== '') addTransform(e.style, transform);
-    return e;
-}
-
-function container(pos,elem) {
-    var e = render(elem);
-    setPos(pos, elem.props.width, elem.props.height, e);
-    var div = newElement('div');
-    div.style.position = 'relative';
-    div.style.overflow = 'hidden';
-    div.appendChild(e);
-    return div;
-}
-
-function rawHtml(html) {
-    var e = newElement('div');
-    e.innerHTML = html;
-    return e;
-}
-
-function render(elem) { return setProps(elem.props, makeElement(elem)); }
-function makeElement(e) {
-    var elem = e.element;
-    switch(elem.ctor) {
-    case 'Image':     return image(e.props, elem);
-    case 'Flow':      return flow(elem._0, elem._1);
-    case 'Container': return container(elem._0, elem._1);
-    case 'Spacer':    return newElement('div');
-    case 'RawHtml':   return rawHtml(elem._0);
-    case 'Custom':    return elem.render(elem.model);
-    }
-}
-
-function update(node, curr, next) {
-    if (node.tagName === 'A') { node = node.firstChild; }
-    if (curr.props.id === next.props.id) return updateProps(node, curr, next);
-    if (curr.element.ctor !== next.element.ctor) {
-	node.parentNode.replaceChild(render(next),node);
-	return true;
-    }
-    var nextE = next.element, currE = curr.element;
-    switch(nextE.ctor) {
-    case "Spacer": break;
-    case "RawHtml":
-        if (nextE._0 !== currE._0) node.innerHTML = nextE._0;
-        break;
-    case "Image":
-	if (nextE._0.ctor !== 'Plain') {
-	    if (nextE._3 !== currE._3) node.src = nextE._3;
-	} else if (!eq(nextE,currE) ||
-		   next.props.width !== curr.props.width ||
-		   next.props.height !== curr.props.height) {
-	    node.parentNode.replaceChild(render(next),node);
-	    return true;
-	}
-	break;
-    case "Flow":
-        var arr = fromList(nextE._1);
-        for (var i = arr.length; i--; ) { arr[i] = arr[i].element.ctor; }
-	if (nextE._0.ctor !== currE._0.ctor) {
-	    node.parentNode.replaceChild(render(next),node);
-	    return true;
-	}
-	var nexts = fromList(nextE._1);
-	var kids = node.childNodes;
-	if (nexts.length !== kids.length) {
-	    node.parentNode.replaceChild(render(next),node);
-	    return true;
-	}
-	var currs = fromList(currE._1);
-	var goDir = function(x) { return x; };
-	switch(nextE._0.ctor) {
-	case "DDown":  case "DUp":   goDir = goDown; break;
-	case "DRight": case "DLeft": goDir = goRight; break;
-	case "DOut":   case "DIn":   goDir = goIn; break;
-	}
-	for (var i = kids.length; i-- ;) {
-	    update(kids[i],currs[i],nexts[i]);
-	    goDir(kids[i]);
-	}
-	break;
-    case "Container":
-	var inner = node.firstChild;
-	if (!update(inner, currE._1, nextE._1)) {
-	    if (nextE._0.horizontal.ctor !== currE._0.horizontal.ctor) {
-		inner.style.left = inner.style.right = 'none';
-		removeTransform(inner.style);
-	    }
-	    if (nextE._0.vertical.ctor !== currE._0.vertical.ctor) {
-		inner.style.top = inner.style.bottom = 'none';
-		removeTransform(inner.style);
-	    }
-	}
-	setPos(nextE._0, nextE._1.props.width, nextE._1.props.height, inner);
-	break;
-    case "Custom":
-	if (currE.type === nextE.type) {
-	    var done = nextE.update(node, currE.model, nextE.model);
-	    if (done) return;
-	} else {
-	    return node.parentNode.replaceChild(render(next), node);
-	}
-    }
-    updateProps(node, curr, next);
-}
-
-function updateProps(node, curr, next) {
-    var props = next.props, currP = curr.props, e = node;
-    if (props.width !== currP.width)   e.style.width  = (props.width |0) + 'px';
-    if (props.height !== currP.height) e.style.height = (props.height|0) + 'px';
-    if (props.opacity !== 1 && props.opacity !== currP.opacity) {
-	e.style.opacity = props.opacity;
-    }
-    var nextColor = (props.color.ctor === 'Just' ?
-		     extract(props.color._0) : 'transparent');
-    if (e.style.backgroundColor !== nextColor) {
-        e.style.backgroundColor = nextColor;
-    }
-    if (props.tag !== currP.tag) { e.id = props.tag; }
-    if (props.href !== currP.href) {
-	if (currP.href === '') {
-	    var a = newElement('a');
-	    a.href = props.href;
-	    a.appendChild(e);
-	    e.parentNode.replaceChild(a,e);
-	} else {
-	    node.parentNode.href = props.href;
-	}
-    }
-}
-
-return { render:render, update:update };
-
-};
 ElmRuntime.Render.Collage = function() {
 'use strict';
 
@@ -4830,6 +5087,7 @@ function trace(ctx, path) {
 
 function line(ctx,style,path) {
     style.dashing.ctor === 'Nil' ? trace(ctx, path) : customLineHelp(ctx, style, path);
+    ctx.scale(1,-1);
     ctx.stroke();
 }
 
@@ -4914,6 +5172,7 @@ function drawShape(redo, ctx, style, path) {
     ctx.fillStyle =
         sty === 'Solid' ? extract(style._0) :
         sty === 'Texture' ? texture(redo, ctx, style._0) : gradient(ctx, style._0);
+    ctx.scale(1,-1);
     ctx.fill();
 }
 
@@ -4933,6 +5192,7 @@ function drawImage(redo, ctx, form) {
         destW = w,
         destH = h;
 
+    ctx.scale(1,-1);
     ctx.drawImage(img, srcX, srcY, srcW, srcH, destX, destY, destW, destH);
 }
 
@@ -4941,7 +5201,8 @@ function renderForm(redo, ctx, form) {
     var x = form.x, y = form.y, theta = form.theta, scale = form.scale;
     if (x !== 0 || y !== 0) ctx.translate(x, y);
     if (theta !== 0) ctx.rotate(theta);
-    ctx.scale(scale,-scale);
+    if (scale !== 1) ctx.scale(scale,scale);
+    if (form.alpha !== 1) ctx.globalAlpha = ctx.globalAlpha * form.alpha;
     ctx.beginPath();
     var f = form.form;
     switch(f.ctor) {
@@ -4961,7 +5222,7 @@ function renderForm(redo, ctx, form) {
 
 function formToMatrix(form) {
    var scale = form.scale;
-   var matrix = A6( Matrix.matrix, scale, 0, 0, scale, scale * form.x, scale * form.y );
+   var matrix = A6( Matrix.matrix, scale, 0, 0, scale, form.x, form.y );
 
    var theta = form.theta
    if (theta !== 0)
@@ -5002,6 +5263,7 @@ function stepperHelp(list) {
 function stepper(forms) {
     var ps = [stepperHelp(forms)];
     var matrices = [];
+    var alphas = [];
     function peekNext() {
         var len = ps.length;
         var formType = '';
@@ -5012,20 +5274,30 @@ function stepper(forms) {
     }
     // assumes that there is a next element
     function next(ctx) {
-        while (!ps[0].peekNext()) { ps.shift(); matrices.pop(); ctx.restore(); }
+        while (!ps[0].peekNext()) {
+            ps.shift();
+            matrices.pop();
+            alphas.shift();
+            if (ctx) { ctx.restore(); }
+        }
         var out = ps[0].next();
         var f = out.form;
         if (f.ctor === 'FGroup') {
             ps.unshift(stepperHelp(f._1));
-            var m = A2( Matrix.multiply, f._0, formToMatrix(out));
+            var m = A2(Matrix.multiply, f._0, formToMatrix(out));
             ctx.save();
             ctx.transform(m[0], m[3], m[1], m[4], m[2], m[5]);
             matrices.push(m);
+
+            var alpha = (alphas[0] || 1) * out.alpha;
+            alphas.unshift(alpha);
+            ctx.globalAlpha = alpha;
         }
         return out;
     }
     function transforms() { return matrices; }
-    return { peekNext:peekNext, next:next, transforms:transforms };
+    function alpha() { return alphas[0] || 1; }
+    return { peekNext:peekNext, next:next, transforms:transforms, alpha:alpha };
 }
 
 function makeCanvas(w,h) {
@@ -5050,6 +5322,7 @@ function updateTracker(w,h,div) {
     var i = 0;
     function transform(transforms, ctx) {
         ctx.translate(w/2, h/2);
+        ctx.scale(1,-1);
         var len = transforms.length;
         for (var i = 0; i < len; ++i) {
             var m = transforms[i];
@@ -5060,12 +5333,13 @@ function updateTracker(w,h,div) {
     }
     function getContext(transforms) {
         while (i < kids.length) {
-            var node = kids[i++];
+            var node = kids[i];
             if (node.getContext) {
                 node.width = w;
                 node.height = h;
                 node.style.width = w + 'px';
                 node.style.height = h + 'px';
+                ++i;
                 return transform(transforms, node.getContext('2d'));
             }
             div.removeChild(node);
@@ -5076,29 +5350,24 @@ function updateTracker(w,h,div) {
         ++i;
         return transform(transforms, canvas.getContext('2d'));
     }
-    function element(matrices, form) {
+    function element(matrices, alpha, form) {
         var container = kids[i];
         if (!container || container.getContext) {
             container = newElement('div');
             container.style.overflow = 'hidden';
             container.style.position = 'absolute';
             addTransform(container.style, 'scaleY(-1)');
-            if (!container) {
-                div.appendChild(container);
-            } else {
-                var kid = kids[i];
-                if (kid) {
-                    div.insertBefore(container, kid);
-                } else {
-                    div.appendChild(container);
-                }
-            }
+            
+            var kid = kids[i];
+            kid ? div.insertBefore(container, kid)
+                : div.appendChild(container);
         }
         // we have added a new node, so we must step our position
         ++i;
 
         container.style.width = w + 'px';
         container.style.height = h + 'px';
+        container.style.opacity = alpha * form.alpha;
 
         var elem = form.form._0;
         var node = container.firstChild;
@@ -5112,7 +5381,12 @@ function updateTracker(w,h,div) {
         node.oldElement = elem;
         addTransform(node.style, makeTransform(w, h, form, matrices));
     }
-    return { getContext:getContext, element:element };
+    function clearRest() {
+        while (i < kids.length) {
+            div.removeChild(kids[i]);
+        }
+    }
+    return { getContext:getContext, element:element, clearRest:clearRest };
 }
 
 
@@ -5134,19 +5408,348 @@ function update(div, _, model) {
     while (formType = stpr.peekNext()) {
         if (ctx === null && formType !== 'FElement') {
             ctx = tracker.getContext(stpr.transforms());
-            ctx.scale(1,-1);
+            ctx.globalAlpha = stpr.alpha();
         }
         var form = stpr.next(ctx);
         if (formType === 'FElement') {
-            tracker.element(stpr.transforms(), form);
+            tracker.element(stpr.transforms(), stpr.alpha(), form);
             ctx = null;
         } else if (formType !== 'FGroup') {
             renderForm(function() { update(div, model, model); }, ctx, form);
         }
     }
-    return div;
+    tracker.clearRest();
+    return false;
 }
 
 return { render:render, update:update };
 
+};
+
+ElmRuntime.Render.Element = function() {
+'use strict';
+
+var Utils = ElmRuntime.use(ElmRuntime.Render.Utils);
+var newElement = Utils.newElement, extract = Utils.extract,
+    addTransform = Utils.addTransform, removeTransform = Utils.removeTransform,
+    fromList = Utils.fromList, eq = Utils.eq;
+
+function setProps(props, e) {
+    e.style.width  = (props.width |0) + 'px';
+    e.style.height = (props.height|0) + 'px';
+    if (props.opacity !== 1) { e.style.opacity = props.opacity; }
+    if (props.color.ctor === 'Just') {
+        e.style.backgroundColor = extract(props.color._0);
+    }
+    if (props.tag !== '') { e.id = props.tag; }
+    if (props.href !== '') {
+        var a = newElement('a');
+        a.href = props.href;
+        a.style.width = '100%';
+        a.style.height = '100%';
+        a.style.top = 0;
+        a.style.left = 0;
+        a.style.display = 'block';
+        a.style.position = 'absolute';
+        e.style.position = 'relative';
+        e.appendChild(a);
+    }
+    if (props.hover.ctor !== '_Tuple0') {
+        var overCount = 0;
+        e.addEventListener('mouseover', function() {
+            if (overCount++ > 0) return;
+            props.hover(true);
+        });
+        e.addEventListener('mouseout', function(evt) {
+            if (e.contains(evt.toElement || evt.relatedTarget)) return;
+            overCount = 0;
+            props.hover(false);
+        });
+    }
+    return e;
+}
+
+function image(props, img) {
+    switch (img._0.ctor) {
+    case 'Plain':   return plainImage(img._3);
+    case 'Fitted':  return fittedImage(props.width, props.height, img._3);
+    case 'Cropped': return croppedImage(img,props.width,props.height,img._3);
+    case 'Tiled':   return tiledImage(img._3);
+    }
+}
+
+function plainImage(src) {
+    var img = newElement('img');
+    img.src = src;
+    img.name = src;
+    img.style.display = "block";
+    return img;
+}
+
+function tiledImage(src) {
+    var div = newElement('div');
+    div.style.backgroundImage = 'url(' + src + ')';
+    return div;
+}
+
+function fittedImage(w, h, src) {
+    var div = newElement('div');
+    div.style.background = 'url(' + src + ') no-repeat center';
+    div.style.webkitBackgroundSize = 'cover';
+    div.style.MozBackgroundSize = 'cover';
+    div.style.OBackgroundSize = 'cover';
+    div.style.backgroundSize = 'cover';
+    return div;
+}
+
+function croppedImage(elem, w, h, src) {
+    var pos = elem._0._0;
+    var e = newElement('div');
+    e.style.overflow = "hidden";
+
+    var img = newElement('img');
+    img.onload = function() {
+        var sw = w / elem._1, sh = h / elem._2;
+        img.style.width = ((this.width * sw)|0) + 'px';
+        img.style.height = ((this.height * sh)|0) + 'px';
+        img.style.marginLeft = ((- pos._0 * sw)|0) + 'px';
+        img.style.marginTop = ((- pos._1 * sh)|0) + 'px';
+    };
+    img.src = src;
+    img.name = src;
+    e.appendChild(img);
+    return e;
+}
+
+function goIn(e) { e.style.position = 'absolute'; return e; }
+function goDown(e) { return e }
+function goRight(e) { e.style.styleFloat = e.style.cssFloat = "left"; return e; }
+function flowWith(f, array) {
+    var container = newElement('div');
+    for (var i = array.length; i--; ) {
+        container.appendChild(f(render(array[i])));
+    }
+    return container;
+}
+
+function flow(dir,elist) {
+    var array = fromList(elist);
+    switch(dir.ctor) {
+    case "DDown":  array.reverse();
+    case "DUp":    return flowWith(goDown,array);
+    case "DRight": array.reverse();
+    case "DLeft":  return flowWith(goRight,array);
+    case "DOut":   array.reverse();
+    case "DIn":    return flowWith(goIn,array);
+    }
+}
+
+function toPos(pos) {
+    switch(pos.ctor) {
+    case "Absolute": return  pos._0 + "px";
+    case "Relative": return (pos._0 * 100) + "%";
+    }
+}
+
+function setPos(pos,w,h,e) {
+    e.style.position = 'absolute';
+    e.style.margin = 'auto';
+    var transform = '';
+    switch(pos.horizontal.ctor) {
+    case 'P': e.style.right = toPos(pos.x); break;
+    case 'Z': transform = 'translateX(' + ((-w/2)|0) + 'px) ';
+    case 'N': e.style.left = toPos(pos.x); break;
+    }
+    switch(pos.vertical.ctor) {
+    case 'N': e.style.bottom = toPos(pos.y); break;
+    case 'Z': transform += 'translateY(' + ((-h/2)|0) + 'px)';
+    case 'P': e.style.top = toPos(pos.y); break;
+    }
+    if (transform !== '') addTransform(e.style, transform);
+    return e;
+}
+
+function container(pos,elem) {
+    var e = render(elem);
+    setPos(pos, elem.props.width, elem.props.height, e);
+    var div = newElement('div');
+    div.style.position = 'relative';
+    div.style.overflow = 'hidden';
+    div.appendChild(e);
+    return div;
+}
+
+function rawHtml(html) {
+    var e = newElement('div');
+    e.innerHTML = html;
+    return e;
+}
+
+function render(elem) { return setProps(elem.props, makeElement(elem)); }
+function makeElement(e) {
+    var elem = e.element;
+    switch(elem.ctor) {
+    case 'Image':     return image(e.props, elem);
+    case 'Flow':      return flow(elem._0, elem._1);
+    case 'Container': return container(elem._0, elem._1);
+    case 'Spacer':    return newElement('div');
+    case 'RawHtml':   return rawHtml(elem._0);
+    case 'Custom':    return elem.render(elem.model);
+    }
+}
+
+function update(node, curr, next) {
+    if (node.tagName === 'A') { node = node.firstChild; }
+    if (curr.props.id === next.props.id) return updateProps(node, curr, next);
+    if (curr.element.ctor !== next.element.ctor) {
+        node.parentNode.replaceChild(render(next),node);
+        return true;
+    }
+    var nextE = next.element, currE = curr.element;
+    switch(nextE.ctor) {
+    case "Spacer": break;
+    case "RawHtml":
+        if (nextE._0 !== currE._0) node.innerHTML = nextE._0;
+        break;
+    case "Image":
+        if (nextE._0.ctor === 'Plain') {
+            if (nextE._3 !== currE._3) node.src = nextE._3;
+        } else if (!eq(nextE,currE) ||
+                   next.props.width !== curr.props.width ||
+                   next.props.height !== curr.props.height) {
+            node.parentNode.replaceChild(render(next),node);
+            return true;
+        }
+        break;
+    case "Flow":
+        var arr = fromList(nextE._1);
+        for (var i = arr.length; i--; ) { arr[i] = arr[i].element.ctor; }
+        if (nextE._0.ctor !== currE._0.ctor) {
+            node.parentNode.replaceChild(render(next),node);
+            return true;
+        }
+        var nexts = fromList(nextE._1);
+        var kids = node.childNodes;
+        if (nexts.length !== kids.length) {
+            node.parentNode.replaceChild(render(next),node);
+            return true;
+        }
+        var currs = fromList(currE._1);
+        var goDir = function(x) { return x; };
+        switch(nextE._0.ctor) {
+        case "DDown":  case "DUp":   goDir = goDown; break;
+        case "DRight": case "DLeft": goDir = goRight; break;
+        case "DOut":   case "DIn":   goDir = goIn; break;
+        }
+        for (var i = kids.length; i-- ;) {
+            update(kids[i],currs[i],nexts[i]);
+            goDir(kids[i]);
+        }
+        break;
+    case "Container":
+        var inner = node.firstChild;
+        if (!update(inner, currE._1, nextE._1)) {
+            if (nextE._0.horizontal.ctor !== currE._0.horizontal.ctor) {
+                inner.style.left = inner.style.right = 'none';
+                removeTransform(inner.style);
+            }
+            if (nextE._0.vertical.ctor !== currE._0.vertical.ctor) {
+                inner.style.top = inner.style.bottom = 'none';
+                removeTransform(inner.style);
+            }
+        }
+        setPos(nextE._0, nextE._1.props.width, nextE._1.props.height, inner);
+        break;
+    case "Custom":
+        if (currE.type === nextE.type) {
+            var done = nextE.update(node, currE.model, nextE.model);
+            if (done) return;
+        } else {
+            return node.parentNode.replaceChild(render(next), node);
+        }
+    }
+    updateProps(node, curr, next);
+}
+
+function updateProps(node, curr, next) {
+    var props = next.props, currP = curr.props, e = node;
+    if (props.width !== currP.width)   e.style.width  = (props.width |0) + 'px';
+    if (props.height !== currP.height) e.style.height = (props.height|0) + 'px';
+    if (props.opacity !== 1 && props.opacity !== currP.opacity) {
+        e.style.opacity = props.opacity;
+    }
+    var nextColor = (props.color.ctor === 'Just' ?
+                     extract(props.color._0) : 'transparent');
+    if (e.style.backgroundColor !== nextColor) {
+        e.style.backgroundColor = nextColor;
+    }
+    if (props.tag !== currP.tag) { e.id = props.tag; }
+    if (props.href !== currP.href) {
+        if (currP.href === '') {
+            var a = newElement('a');
+            a.href = props.href;
+            a.style.width = '100%';
+            a.style.height = '100%';
+            a.style.top = 0;
+            a.style.left = 0;
+            a.style.display = 'block';
+            a.style.position = 'absolute';
+            e.style.position = 'relative';
+            e.appendChild(a);
+        } else {
+            node.lastNode.href = props.href;
+        }
+    }
+}
+
+return { render:render, update:update };
+
+};
+ElmRuntime.Render.Utils = function() {
+'use strict';
+
+function newElement(elementType) {
+    var e = document.createElement(elementType);    
+    e.style.padding = "0";
+    e.style.margin = "0";
+    return e;
+}
+
+function addTo(container, elem) {
+    container.appendChild(elem);
+}
+
+function extract(c) {
+    if (c._3 === 1) { return 'rgb(' + c._0 + ',' + c._1 + ',' + c._2 + ')'; }
+    return 'rgba(' + c._0 + ',' + c._1 + ',' + c._2 + ',' + c._3 + ')';
+}
+
+function addTransform(style, trans) {
+  style.transform       = trans;
+  style.msTransform     = trans;
+  style.MozTransform    = trans;
+  style.webkitTransform = trans;
+  style.OTransform      = trans;
+}
+
+function removeTransform(style) {
+  style.transform       = 'none';
+  style.msTransform     = 'none';
+  style.MozTransform    = 'none';
+  style.webkitTransform = 'none';
+  style.OTransform      = 'none';
+}
+
+var List = Elm.Native.List({});
+
+return {addTo:addTo,
+	newElement:newElement,
+	extract : extract,
+	fromList: List.toArray,
+	fromString: function(s) { return List.toArray(s).join(''); },
+	toString: List.fromArray,
+	eq: Elm.Native.Utils({}).eq,
+	addTransform: addTransform,
+	removeTransform: removeTransform
+	};
 };
