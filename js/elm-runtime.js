@@ -2402,7 +2402,7 @@ Elm.Native.Touch = function(elm) {
       });
   elm.addListener([root.id], node, "blur", function blur(e) {
           node.removeEventListener("mousemove", move);
-          if (root.values.length > 0) {
+          if (root.value.length > 0) {
               elm.notify(root.id, []);
               --mouseID;
           }
@@ -2576,7 +2576,7 @@ Elm.Automaton = function(elm){
                       case '_Tuple2':
                         return function(){
                           var sum$ = ((arg1._2+n)-case19._0._0);
-                          return {ctor:"_Tuple2", _0:{ctor:"_Tuple3", _0:A2(enqueue, n, case19._0._1), _1:arg1._1, _2:sum$}, _1:(sum$/arg1._1)};}();
+                          return {ctor:"_Tuple2", _0:{ctor:"_Tuple3", _0:A2(enqueue, n, case19._0._1), _1:arg1._1, _2:sum$}, _1:(sum$/Basics.toFloat(arg1._1))};}();
                     }break;
                   case 'Nothing':
                     return {ctor:"_Tuple2", _0:{ctor:"_Tuple3", _0:arg1._0, _1:arg1._1, _2:arg1._2}, _1:0};
@@ -2586,7 +2586,7 @@ Elm.Automaton = function(elm){
         return function(){
           switch (arg1.ctor) {
             case '_Tuple3':
-              return (_N.eq(arg1._1,k) ? A2(stepFull, n, {ctor:"_Tuple3", _0:arg1._0, _1:arg1._1, _2:arg1._2}) : (Basics.otherwise ? {ctor:"_Tuple2", _0:{ctor:"_Tuple3", _0:A2(enqueue, n, arg1._0), _1:(arg1._1+1), _2:(arg1._2+n)}, _1:((arg1._2+n)/(arg1._1+1))} : _E.If($moduleName,'between lines 82 and 83')));
+              return (_N.eq(arg1._1,k) ? A2(stepFull, n, {ctor:"_Tuple3", _0:arg1._0, _1:arg1._1, _2:arg1._2}) : (Basics.otherwise ? {ctor:"_Tuple2", _0:{ctor:"_Tuple3", _0:A2(enqueue, n, arg1._0), _1:(arg1._1+1), _2:(arg1._2+n)}, _1:((arg1._2+n)/(Basics.toFloat(arg1._1)+1))} : _E.If($moduleName,'between lines 82 and 83')));
           }_E.Case($moduleName,'between lines 82 and 83')}();});
       return A2(hiddenState, {ctor:"_Tuple3", _0:empty, _1:0, _2:0}, step);}();};
   var pure = function(f){
@@ -3652,7 +3652,6 @@ Elm.List = function(elm){
   var scanl1 = Native.List.scanl1;
   var scanl = Native.List.scanl;
   var reverse = Native.List.reverse;
-  var or = Native.List.or;
   var map = Native.List.map;
   var length = Native.List.length;
   var last = Native.List.last;
@@ -3671,6 +3670,8 @@ Elm.List = function(elm){
   var maximum = foldl1(Basics.max);
   var minimum = foldl1(Basics.min);
   var foldl = Native.List.foldl;
+  var or = A2(foldl, F2(function(x, y){
+    return (x||y);}), false);
   var product = A2(foldl, F2(function(x, y){
     return (x*y);}), 1);
   var sum = A2(foldl, F2(function(x, y){
@@ -3681,7 +3682,8 @@ Elm.List = function(elm){
   var concatMap = F2(function(f, list){
     return concat(A2(map, f, list));});
   var any = Native.List.any;
-  var and = Native.List.and;
+  var and = A2(foldl, F2(function(x, y){
+    return (x&&y);}), true);
   var all = Native.List.all;
   _op['::'] = Native.List.cons;
   var intersperse = F2(function(sep, xs){
@@ -4946,7 +4948,6 @@ function init(display, container, module, moduleToReplace) {
 
       // rerender scene if graphics are enabled.
       if (typeof graphicsNode !== 'undefined') {
-          graphicsNode.value = A2( Elm.Graphics.Element(elm).spacer, 0, 0 );
           graphicsNode.recv(0, true, 0);
       }
   }
