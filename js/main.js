@@ -391,7 +391,7 @@ process.binding = function (name) {
 
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/editor.js",function(require,module,exports,__dirname,__filename,process,global){var SourceSignal = require('./ui.state').SourceSignal
+require.define("/projects/repos/ui-share-elm/js/src/editor.js",function(require,module,exports,__dirname,__filename,process,global){var SourceSignal = require('./ui.state').SourceSignal
 var show         = require('./ui.update').show
 var history      = require('./history')
 var compiler     = require('./compiler')
@@ -424,7 +424,7 @@ module.exports = {
 
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/ui.state.js",function(require,module,exports,__dirname,__filename,process,global){var query = require('./ui.query')
+require.define("/projects/repos/ui-share-elm/js/src/ui.state.js",function(require,module,exports,__dirname,__filename,process,global){var query = require('./ui.query')
 
 // String
 function category() {
@@ -476,7 +476,7 @@ module.exports = {
 
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/ui.query.js",function(require,module,exports,__dirname,__filename,process,global){function query(selector) {
+require.define("/projects/repos/ui-share-elm/js/src/ui.query.js",function(require,module,exports,__dirname,__filename,process,global){function query(selector) {
   return document.querySelectorAll(selector)
 }
 
@@ -486,7 +486,7 @@ module.exports = query
 
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/ui.update.js",function(require,module,exports,__dirname,__filename,process,global){var query         = require('./ui.query')
+require.define("/projects/repos/ui-share-elm/js/src/ui.update.js",function(require,module,exports,__dirname,__filename,process,global){var query         = require('./ui.query')
 var updateHistory = require('./history.update')
 var Record        = require('./history.model').Record
 var addWord       = require('./core').addWord
@@ -580,7 +580,7 @@ module.exports = {
 
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/history.update.js",function(require,module,exports,__dirname,__filename,process,global){// String -> HistoryRecord
+require.define("/projects/repos/ui-share-elm/js/src/history.update.js",function(require,module,exports,__dirname,__filename,process,global){// String -> HistoryRecord
 function updateHistory(url, r) {
   window.history.pushState(r, "", url)
 }
@@ -590,7 +590,7 @@ module.exports = updateHistory
 
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/history.model.js",function(require,module,exports,__dirname,__filename,process,global){// String -> String -> String -> HistoryRecord
+require.define("/projects/repos/ui-share-elm/js/src/history.model.js",function(require,module,exports,__dirname,__filename,process,global){// String -> String -> String -> HistoryRecord
 function HistoryRecord(route, category, sourcecode) {
   // (can't just store EditorState in DOM history because an object with functions breaks it)
   return {
@@ -606,7 +606,7 @@ module.exports = {
 
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/core.js",function(require,module,exports,__dirname,__filename,process,global){var _              = require('underscore')
+require.define("/projects/repos/ui-share-elm/js/src/core.js",function(require,module,exports,__dirname,__filename,process,global){var _              = require('underscore')
 
 // String helpers
 
@@ -3079,7 +3079,7 @@ module.exports = { PromiseP: PromiseP
                  , active:   active }
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/editor.state.js",function(require,module,exports,__dirname,__filename,process,global){var state  = require('./ui.state')
+require.define("/projects/repos/ui-share-elm/js/src/editor.state.js",function(require,module,exports,__dirname,__filename,process,global){var state  = require('./ui.state')
 var Editor = require('./editor.model').Editor
 
 // SourceIO
@@ -3102,7 +3102,7 @@ module.exports = {
 
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/editor.model.js",function(require,module,exports,__dirname,__filename,process,global){var _         = require('underscore')
+require.define("/projects/repos/ui-share-elm/js/src/editor.model.js",function(require,module,exports,__dirname,__filename,process,global){var _         = require('underscore')
 var path      = require('./path.model')
 var UIButtons = require('./ui.model').UIButtons
 
@@ -3135,7 +3135,7 @@ module.exports = {
 
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/path.model.js",function(require,module,exports,__dirname,__filename,process,global){// String -> String
+require.define("/projects/repos/ui-share-elm/js/src/path.model.js",function(require,module,exports,__dirname,__filename,process,global){// String -> String
 function editorPath(id) {
   return '/sprout/' + id
 }
@@ -3152,7 +3152,7 @@ module.exports = {
 
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/ui.model.js",function(require,module,exports,__dirname,__filename,process,global){// UIElement = { selector:String }
+require.define("/projects/repos/ui-share-elm/js/src/ui.model.js",function(require,module,exports,__dirname,__filename,process,global){// UIElement = { selector:String }
 
 // String -> UIElement
 function UIElement(selector) {
@@ -3177,7 +3177,7 @@ module.exports = {
 
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/http.model.js",function(require,module,exports,__dirname,__filename,process,global){// ResponseHandler = (M[A,Response] -> B)
+require.define("/projects/repos/ui-share-elm/js/src/http.model.js",function(require,module,exports,__dirname,__filename,process,global){// ResponseHandler = (M[A,Response] -> B)
 // Request = { method:String, url:String, data:{}, responseHandler:ResponseHandler }
 // String -> String -> {} -> ResponseHandler -> Request
 function Request(method, url, data, responseHandler) {
@@ -3208,7 +3208,7 @@ module.exports = {
 
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/history.js",function(require,module,exports,__dirname,__filename,process,global){var curry  = require('curry')
+require.define("/projects/repos/ui-share-elm/js/src/history.js",function(require,module,exports,__dirname,__filename,process,global){var curry  = require('curry')
 var update = require('./ui.update')
 var path   = require('./path.model')
 
@@ -3304,7 +3304,7 @@ module.exports = curry;
 
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/compiler.js",function(require,module,exports,__dirname,__filename,process,global){var UIElement      = require('./ui.model').UIElement
+require.define("/projects/repos/ui-share-elm/js/src/compiler.js",function(require,module,exports,__dirname,__filename,process,global){var UIElement      = require('./ui.model').UIElement
 var clickListener  = require('./ui.event').clickListener
 var changeListener = require('./ui.event').changeListener
 var step           = require('./ui.update').step
@@ -3334,7 +3334,7 @@ module.exports = {
 
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/ui.event.js",function(require,module,exports,__dirname,__filename,process,global){var bean  = require('bean')
+require.define("/projects/repos/ui-share-elm/js/src/ui.event.js",function(require,module,exports,__dirname,__filename,process,global){var bean  = require('bean')
 var curry = require('curry')
 
 var on = curry(function (eventType, selector, handler) {
@@ -4113,7 +4113,7 @@ require.define("/node_modules/bean/bean.js",function(require,module,exports,__di
 });
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/compiler.model.js",function(require,module,exports,__dirname,__filename,process,global){var _            = require('underscore')
+require.define("/projects/repos/ui-share-elm/js/src/compiler.model.js",function(require,module,exports,__dirname,__filename,process,global){var _            = require('underscore')
 var curry        = require('curry')
 var Request      = require('./http.model').Request
 var StoreRequest = require('./http.model').StoreRequest
@@ -4148,7 +4148,7 @@ module.exports = {
 
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/gist.js",function(require,module,exports,__dirname,__filename,process,global){var curry         = require('curry')
+require.define("/projects/repos/ui-share-elm/js/src/gist.js",function(require,module,exports,__dirname,__filename,process,global){var curry         = require('curry')
 var http          = require('iris').http
 var update        = require('./ui.update')
 var state         = require('./ui.state')
@@ -4202,13 +4202,13 @@ module.exports = {
 
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/main.js",function(require,module,exports,__dirname,__filename,process,global){var editor = require('./editor')
+require.define("/projects/repos/ui-share-elm/js/src/main.js",function(require,module,exports,__dirname,__filename,process,global){var editor = require('./editor')
 var gist   = require('./gist')
 
 editor.init()
 gist.init()
 
 });
-require("/projects/repos/share-elm/src/main/resources/theme/js/src/main.js");
+require("/projects/repos/ui-share-elm/js/src/main.js");
 })();
 
