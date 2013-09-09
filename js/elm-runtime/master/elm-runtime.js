@@ -126,7 +126,7 @@ Elm.Native.Char = function(elm) {
 
  return elm.Native.Char = {
      fromCode : function(c) { return String.fromCharCode(c); },
-     toCode   : function(c) { return c.charCodeAt(0); },
+     toCode   : function(c) { return c.toUpperCase().charCodeAt(0); },
      toUpper  : function(c) { return c.toUpperCase(); },
      toLower  : function(c) { return c.toLowerCase(); },
      toLocaleUpper : function(c) { return c.toLocaleUpperCase(); },
@@ -902,106 +902,6 @@ Elm.Native.List = function(elm) {
   return elm.Native.List = Elm.Native.List.values;
 
 };
-Elm.Native.Matrix2D = function(elm) {
- "use strict";
-
- elm.Native = elm.Native || {};
- if (elm.Native.Matrix2D) return elm.Native.Matrix2D;
-
- var A;
- if (typeof Float32Array === 'undefined') {
-     A = function(arr) {
-         this.length = arr.length;
-         this[0] = arr[0];
-         this[1] = arr[1];
-         this[2] = arr[2];
-         this[3] = arr[3];
-         this[4] = arr[4];
-         this[5] = arr[5];
-     };
- } else {
-     A = Float32Array;
- }
-
- // layout of matrix in an array is
- //
- //   | m11 m12 dx |
- //   | m21 m22 dy |
- //   |  0   0   1 |
- //
- //  new A([ m11, m12, dx, m21, m22, dy ])
-
- var identity = new A([1,0,0,0,1,0]);
- function matrix(m11, m12, m21, m22, dx, dy) {
-     return new A([m11, m12, dx, m21, m22, dy]);
- }
- function rotation(t) {
-     var c = Math.cos(t);
-     var s = Math.sin(t);
-     return new A([c, -s, 0, s, c, 0]);
- }
-
- function rotate(t,m) {
-     var c = Math.cos(t);
-     var s = Math.sin(t);
-     var m11 = m[0], m12 = m[1], m21 = m[3], m22 = m[4];
-     return new A([m11*c + m12*s, -m11*s + m12*c, m[2],
-                   m21*c + m22*s, -m21*s + m22*c, m[5]]);
- }
- /*
- function move(xy,m) {
-     var x = xy._0;
-     var y = xy._1;
-     var m11 = m[0], m12 = m[1], m21 = m[3], m22 = m[4];
-     return new A([m11, m12, m11*x + m12*y + m[2],
-                   m21, m22, m21*x + m22*y + m[5]]);
- }
- function scale(s,m) { return new A([m[0]*s, m[1]*s, m[2], m[3]*s, m[4]*s, m[5]]); }
- function scaleX(x,m) { return new A([m[0]*x, m[1], m[2], m[3]*x, m[4], m[5]]); }
- function scaleY(y,m) { return new A([m[0], m[1]*y, m[2], m[3], m[4]*y, m[5]]); }
- function reflectX(m) { return new A([-m[0], m[1], m[2], -m[3], m[4], m[5]]); }
- function reflectY(m) { return new A([m[0], -m[1], m[2], m[3], -m[4], m[5]]); }
-
- function transform(m11, m21, m12, m22, mdx, mdy, n) {
-     var n11 = n[0], n12 = n[1], n21 = n[3], n22 = n[4], ndx = n[2], ndy = n[5];
-     return new A([m11*n11 + m12*n21,
-                   m11*n12 + m12*n22,
-                   m11*ndx + m12*ndy + mdx,
-                   m21*n11 + m22*n21,
-                   m21*n12 + m22*n22,
-                   m21*ndx + m22*ndy + mdy]);
- }
- */
- function multiply(m, n) {
-     var m11 = m[0], m12 = m[1], m21 = m[3], m22 = m[4], mdx = m[2], mdy = m[5];
-     var n11 = n[0], n12 = n[1], n21 = n[3], n22 = n[4], ndx = n[2], ndy = n[5];
-     return new A([m11*n11 + m12*n21,
-                   m11*n12 + m12*n22,
-                   m11*ndx + m12*ndy + mdx,
-                   m21*n11 + m22*n21,
-                   m21*n12 + m22*n22,
-                   m21*ndx + m22*ndy + mdy]);
- }
-
- return elm.Native.Matrix2D = {
-     identity:identity,
-     matrix:F6(matrix),
-     rotation:rotation,
-     multiply:F2(multiply)
-     /*
-     transform:F7(transform),
-     rotate:F2(rotate),
-     move:F2(move),
-     scale:F2(scale),
-     scaleX:F2(scaleX),
-     scaleY:F2(scaleY),
-     reflectX:reflectX,
-     reflectY:reflectY
-     */
- };
-
-};
-
 Elm.Native.Prelude = function(elm) {
   'use strict';
   if (elm.Native.Prelude) return elm.Native.Prelude;
@@ -1448,6 +1348,106 @@ Elm.Native.Utils = function(elm) {
   };
 };
 
+Elm.Native.Transform2D = function(elm) {
+ "use strict";
+
+ elm.Native = elm.Native || {};
+ if (elm.Native.Transform2D) return elm.Native.Transform2D;
+
+ var A;
+ if (typeof Float32Array === 'undefined') {
+     A = function(arr) {
+         this.length = arr.length;
+         this[0] = arr[0];
+         this[1] = arr[1];
+         this[2] = arr[2];
+         this[3] = arr[3];
+         this[4] = arr[4];
+         this[5] = arr[5];
+     };
+ } else {
+     A = Float32Array;
+ }
+
+ // layout of matrix in an array is
+ //
+ //   | m11 m12 dx |
+ //   | m21 m22 dy |
+ //   |  0   0   1 |
+ //
+ //  new A([ m11, m12, dx, m21, m22, dy ])
+
+ var identity = new A([1,0,0,0,1,0]);
+ function matrix(m11, m12, m21, m22, dx, dy) {
+     return new A([m11, m12, dx, m21, m22, dy]);
+ }
+ function rotation(t) {
+     var c = Math.cos(t);
+     var s = Math.sin(t);
+     return new A([c, -s, 0, s, c, 0]);
+ }
+
+ function rotate(t,m) {
+     var c = Math.cos(t);
+     var s = Math.sin(t);
+     var m11 = m[0], m12 = m[1], m21 = m[3], m22 = m[4];
+     return new A([m11*c + m12*s, -m11*s + m12*c, m[2],
+                   m21*c + m22*s, -m21*s + m22*c, m[5]]);
+ }
+ /*
+ function move(xy,m) {
+     var x = xy._0;
+     var y = xy._1;
+     var m11 = m[0], m12 = m[1], m21 = m[3], m22 = m[4];
+     return new A([m11, m12, m11*x + m12*y + m[2],
+                   m21, m22, m21*x + m22*y + m[5]]);
+ }
+ function scale(s,m) { return new A([m[0]*s, m[1]*s, m[2], m[3]*s, m[4]*s, m[5]]); }
+ function scaleX(x,m) { return new A([m[0]*x, m[1], m[2], m[3]*x, m[4], m[5]]); }
+ function scaleY(y,m) { return new A([m[0], m[1]*y, m[2], m[3], m[4]*y, m[5]]); }
+ function reflectX(m) { return new A([-m[0], m[1], m[2], -m[3], m[4], m[5]]); }
+ function reflectY(m) { return new A([m[0], -m[1], m[2], m[3], -m[4], m[5]]); }
+
+ function transform(m11, m21, m12, m22, mdx, mdy, n) {
+     var n11 = n[0], n12 = n[1], n21 = n[3], n22 = n[4], ndx = n[2], ndy = n[5];
+     return new A([m11*n11 + m12*n21,
+                   m11*n12 + m12*n22,
+                   m11*ndx + m12*ndy + mdx,
+                   m21*n11 + m22*n21,
+                   m21*n12 + m22*n22,
+                   m21*ndx + m22*ndy + mdy]);
+ }
+ */
+ function multiply(m, n) {
+     var m11 = m[0], m12 = m[1], m21 = m[3], m22 = m[4], mdx = m[2], mdy = m[5];
+     var n11 = n[0], n12 = n[1], n21 = n[3], n22 = n[4], ndx = n[2], ndy = n[5];
+     return new A([m11*n11 + m12*n21,
+                   m11*n12 + m12*n22,
+                   m11*ndx + m12*ndy + mdx,
+                   m21*n11 + m22*n21,
+                   m21*n12 + m22*n22,
+                   m21*ndx + m22*ndy + mdy]);
+ }
+
+ return elm.Native.Transform2D = {
+     identity:identity,
+     matrix:F6(matrix),
+     rotation:rotation,
+     multiply:F2(multiply)
+     /*
+     transform:F7(transform),
+     rotate:F2(rotate),
+     move:F2(move),
+     scale:F2(scale),
+     scaleX:F2(scaleX),
+     scaleY:F2(scaleY),
+     reflectX:reflectX,
+     reflectY:reflectY
+     */
+ };
+
+};
+
 Elm.Native.Graphics.Collage = function(elm) {
  "use strict";
 
@@ -1840,29 +1840,79 @@ Elm.Native.Keyboard = function(elm) {
   elm.Native = elm.Native || {};
   if (elm.Native.Keyboard) return elm.Native.Keyboard;
 
+  // Duplicated from Native.Signal
+  function send(node, timestep, changed) {
+    var kids = node.kids;
+    for (var i = kids.length; i--; ) {
+      kids[i].recv(timestep, changed, node.id);
+    }
+  }
+
   var Signal = Elm.Signal(elm);
   var NList = Elm.Native.List(elm);
+  var Utils = Elm.Native.Utils(elm);
 
-  var keysDown = Signal.constant(NList.Nil);
-  var lastKey = Signal.constant('\0');
+  var downEvents = Signal.constant(0);
+  var upEvents = Signal.constant(0);
+  var blurEvents = Signal.constant(0);
 
-  elm.addListener([keysDown.id], document, 'keydown', function down(e) {
-          if (NList.member(e.keyCode)(keysDown.value)) return;
-          elm.notify(keysDown.id, NList.Cons(e.keyCode, keysDown.value));
-      });
-  elm.addListener([keysDown.id], document, 'keyup', function up(e) {
-          function notEq(kc) { return kc !== e.keyCode; }
-          elm.notify(keysDown.id, NList.filter(notEq)(keysDown.value));
-      });
-  elm.addListener([keysDown.id], document, 'blur', function blur(e) {
-          elm.notify(keysDown.id, NList.Nil);
-      });
-  elm.addListener([lastKey.id], document, 'keypress', function press(e) {
-          elm.notify(lastKey.id, e.charCode || e.keyCode);
-      });
+  elm.addListener([downEvents.id], document, 'keydown', function down(e) {
+    elm.notify(downEvents.id, e.keyCode);
+  });
+
+  elm.addListener([upEvents.id], document, 'keyup', function up(e) {
+    elm.notify(upEvents.id, e.keyCode);
+  });
+
+  elm.addListener([blurEvents.id], document, 'blur', function blur(e) {
+    elm.notify(blurEvents.id, NList.Nil);
+  });
+
+  function KeyMerge(down, up, blur) {
+    var args = [down,up,blur];
+    this.id = Utils.guid();
+    // Ignore starting values here
+    this.value = NList.Nil
+    this.kids = [];
+    
+    var n = args.length;
+    var count = 0;
+    var isChanged = false;
+
+    this.recv = function(timestep, changed, parentID) {
+      ++count;
+      if (changed) { 
+        // We know this a change must only be one of the following cases
+        if (parentID === down.id && !(NList.member(down.value)(this.value))) {
+          isChanged = true;
+          this.value = NList.Cons(down.value, this.value); 
+        } 
+        if (parentID === up.id) {
+          isChanged = true;
+          var notEq = function(kc) { return kc !== up.value };
+          this.value = NList.filter(notEq)(this.value);
+        } 
+        if (parentID === blur.id) {
+          isChanged = true;
+          this.value = NList.Nil;
+        }
+      }
+      if (count == n) {
+        send(this, timestep, isChanged);
+        isChanged = false;
+        count = 0;
+      }
+    };
+
+    for (var i = n; i--; ) { args[i].kids.push(this); }
+
+  }
+
+  var keysDown = Signal.dropRepeats(new KeyMerge(downEvents,upEvents,blurEvents));
 
   function keySignal(f) {
-    var signal = Signal.dropRepeats(A2(Signal.lift, f, keysDown));
+    var signal = A2(Signal.lift, f, keysDown);
+    // what's the significance of these two following lines? -jpm
     keysDown.defaultNumberOfKids += 1;
     signal.defaultNumberOfKids = 0;
     return signal;
@@ -1887,11 +1937,13 @@ Elm.Native.Keyboard = function(elm) {
 
   function is(key) { return keySignal(NList.member(key)); }
 
+  var lastPressed = Signal.dropRepeats(downEvents);
+
   return elm.Native.Keyboard = {
-      isDown:is,
-      directions:F4(dir),
-      keysDown:keysDown,
-      lastPressed:lastKey
+    isDown:is,
+    directions:F4(dir),
+    keysDown:keysDown,
+    lastPressed:lastPressed
   };
 
 };
@@ -2559,7 +2611,7 @@ Elm.Automaton = function(elm){
         var s$ = function(){
           switch (_8.ctor) {
             case '_Tuple2':
-              return s$;
+              return _8._0;
           }_E.Case($moduleName,'on line 63, column 46 to 51')}();
         return {ctor:"_Tuple2", _0:A2(hiddenState, s$, f), _1:out};}();});});
   var average = function(k){
@@ -2630,7 +2682,7 @@ Elm.Automaton = function(elm){
         var autos$ = function(){
           switch (_37.ctor) {
             case '_Tuple2':
-              return autos$;
+              return _37._0;
           }_E.Case($moduleName,'on line 39, column 34 to 59')}();
         var bs = function(){
           switch (_37.ctor) {
@@ -2650,7 +2702,7 @@ Elm.Automaton = function(elm){
         var f$ = function(){
           switch (_44.ctor) {
             case '_Tuple2':
-              return f$;
+              return _44._0;
           }_E.Case($moduleName,'on line 28, column 29 to 37')}();
         var _51 = A2(step, b, g);
         var c = function(){
@@ -2661,7 +2713,7 @@ Elm.Automaton = function(elm){
         var g$ = function(){
           switch (_51.ctor) {
             case '_Tuple2':
-              return g$;
+              return _51._0;
           }_E.Case($moduleName,'on line 29, column 29 to 37')}();
         return {ctor:"_Tuple2", _0:A2(_op['>>>'], f$, g$), _1:c};}();});});
   _op['<<<'] = F2(function(g, f){
@@ -2836,9 +2888,14 @@ Elm.Color = function(elm){
   var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Color';
   var Native = Native || {};
   Native.Color = Elm.Native.Color(elm);
+  var Basics = Elm.Basics(elm);
   var _op = {};
   var hsva = Native.Color.hsva;
   var hsv = Native.Color.hsv;
+  var greyscale = function(p){
+    return A3(hsv, 0, 0, (1-p));};
+  var grayscale = function(p){
+    return A3(hsv, 0, 0, (1-p));};
   var complement = Native.Color.complement;
   var Radial = F5(function(a, b, c, d, e){
     return {ctor:"Radial", _0:a, _1:b, _2:c, _3:d, _4:e};});
@@ -2849,46 +2906,78 @@ Elm.Color = function(elm){
   var Color = F4(function(a, b, c, d){
     return {ctor:"Color", _0:a, _1:b, _2:c, _3:d};});
   var black = A4(Color, 0, 0, 0, 1);
-  var blue = A4(Color, 0, 0, 255, 1);
-  var cyan = A4(Color, 0, 255, 255, 1);
-  var forestGreen = A4(Color, 34, 139, 34, 1);
-  var gray = A4(Color, 128, 128, 128, 1);
-  var green = A4(Color, 0, 128, 0, 1);
-  var grey = A4(Color, 128, 128, 128, 1);
-  var lime = A4(Color, 0, 255, 0, 1);
-  var magenta = A4(Color, 255, 0, 255, 1);
-  var maroon = A4(Color, 128, 0, 0, 1);
-  var navy = A4(Color, 0, 0, 128, 1);
-  var purple = A4(Color, 128, 0, 128, 1);
-  var red = A4(Color, 255, 0, 0, 1);
+  var blue = A4(Color, 52, 101, 164, 1);
+  var brown = A4(Color, 193, 125, 17, 1);
+  var charcoal = A4(Color, 85, 87, 83, 1);
+  var darkBlue = A4(Color, 32, 74, 135, 1);
+  var darkBrown = A4(Color, 143, 89, 2, 1);
+  var darkCharcoal = A4(Color, 46, 52, 54, 1);
+  var darkGray = A4(Color, 186, 189, 182, 1);
+  var darkGreen = A4(Color, 78, 154, 6, 1);
+  var darkGrey = A4(Color, 186, 189, 182, 1);
+  var darkOrange = A4(Color, 206, 92, 0, 1);
+  var darkPurple = A4(Color, 92, 53, 102, 1);
+  var darkRed = A4(Color, 164, 0, 0, 1);
+  var darkYellow = A4(Color, 196, 160, 0, 1);
+  var gray = A4(Color, 211, 215, 207, 1);
+  var green = A4(Color, 115, 210, 22, 1);
+  var grey = A4(Color, 211, 215, 207, 1);
+  var lightBlue = A4(Color, 114, 159, 207, 1);
+  var lightBrown = A4(Color, 233, 185, 110, 1);
+  var lightCharcoal = A4(Color, 136, 138, 133, 1);
+  var lightGray = A4(Color, 238, 238, 236, 1);
+  var lightGreen = A4(Color, 138, 226, 52, 1);
+  var lightGrey = A4(Color, 238, 238, 236, 1);
+  var lightOrange = A4(Color, 252, 175, 62, 1);
+  var lightPurple = A4(Color, 173, 127, 168, 1);
+  var lightRed = A4(Color, 239, 41, 41, 1);
+  var lightYellow = A4(Color, 255, 233, 79, 1);
+  var orange = A4(Color, 245, 121, 0, 1);
+  var purple = A4(Color, 117, 80, 123, 1);
+  var red = A4(Color, 204, 0, 0, 1);
   var rgb = F3(function(r, g, b){
     return A4(Color, r, g, b, 1);});
   var rgba = Color;
-  var teal = A4(Color, 0, 128, 128, 1);
-  var violet = A4(Color, 238, 130, 238, 1);
   var white = A4(Color, 255, 255, 255, 1);
-  var yellow = A4(Color, 255, 255, 0, 1);
+  var yellow = A4(Color, 237, 212, 0, 1);
   return elm.Color = {
     _op : _op, 
     rgba : rgba, 
     rgb : rgb, 
-    red : red, 
-    lime : lime, 
-    blue : blue, 
+    lightYellow : lightYellow, 
     yellow : yellow, 
-    cyan : cyan, 
-    magenta : magenta, 
+    darkYellow : darkYellow, 
+    lightOrange : lightOrange, 
+    orange : orange, 
+    darkOrange : darkOrange, 
+    lightBrown : lightBrown, 
+    brown : brown, 
+    darkBrown : darkBrown, 
+    lightGreen : lightGreen, 
+    green : green, 
+    darkGreen : darkGreen, 
+    lightBlue : lightBlue, 
+    blue : blue, 
+    darkBlue : darkBlue, 
+    lightPurple : lightPurple, 
+    purple : purple, 
+    darkPurple : darkPurple, 
+    lightRed : lightRed, 
+    red : red, 
+    darkRed : darkRed, 
     black : black, 
     white : white, 
-    gray : gray, 
+    lightGrey : lightGrey, 
     grey : grey, 
-    maroon : maroon, 
-    navy : navy, 
-    green : green, 
-    teal : teal, 
-    purple : purple, 
-    violet : violet, 
-    forestGreen : forestGreen, 
+    darkGrey : darkGrey, 
+    lightGray : lightGray, 
+    gray : gray, 
+    darkGray : darkGray, 
+    lightCharcoal : lightCharcoal, 
+    charcoal : charcoal, 
+    darkCharcoal : darkCharcoal, 
+    grayscale : grayscale, 
+    greyscale : greyscale, 
     complement : complement, 
     hsva : hsva, 
     hsv : hsv, 
@@ -3350,12 +3439,12 @@ Elm.Dict = function(elm){
                 var k$ = function(){
                   switch (_243.ctor) {
                     case '_Tuple2':
-                      return k$;
+                      return _243._0;
                   }_E.Case($moduleName,'on line 326, column 53 to 58')}();
                 var v$ = function(){
                   switch (_243.ctor) {
                     case '_Tuple2':
-                      return v$;
+                      return _243._1;
                   }_E.Case($moduleName,'on line 326, column 53 to 58')}();
                 return fixUp(A5(RBNode, t._0, k$, v$, t._3, deleteMin(t._4)));}();
           }_E.Case($moduleName,'between lines 325 and 329')}();};
@@ -3778,23 +3867,6 @@ Elm.List = function(elm){
     intersperse : intersperse, 
     take : take, 
     drop : drop};};
-Elm.Matrix2D = function(elm){
-  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Matrix2D';
-  var Native = Native || {};
-  Native.Matrix2D = Elm.Native.Matrix2D(elm);
-  var _op = {};
-  var rotation = Native.Matrix2D.rotation;
-  var multiply = Native.Matrix2D.multiply;
-  var matrix = Native.Matrix2D.matrix;
-  var identity = Native.Matrix2D.identity;
-  var Matrix2D = {ctor:"Matrix2D"};
-  return elm.Matrix2D = {
-    _op : _op, 
-    identity : identity, 
-    matrix : matrix, 
-    rotation : rotation, 
-    multiply : multiply, 
-    Matrix2D : Matrix2D};};
 Elm.Maybe = function(elm){
   var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Maybe';
   var Basics = Elm.Basics(elm);
@@ -4120,13 +4192,30 @@ Elm.Window = function(elm){
     dimensions : dimensions, 
     width : width, 
     height : height};};
+Elm.Transform2D = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Transform2D';
+  var Native = Native || {};
+  Native.Transform2D = Elm.Native.Transform2D(elm);
+  var _op = {};
+  var rotation = Native.Transform2D.rotation;
+  var multiply = Native.Transform2D.multiply;
+  var matrix = Native.Transform2D.matrix;
+  var identity = Native.Transform2D.identity;
+  var Transform2D = {ctor:"Transform2D"};
+  return elm.Transform2D = {
+    _op : _op, 
+    identity : identity, 
+    matrix : matrix, 
+    rotation : rotation, 
+    multiply : multiply, 
+    Transform2D : Transform2D};};
 Elm.Graphics = Elm.Graphics || {};
 Elm.Graphics.Collage = function(elm){
   var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString, $moduleName = 'Graphics.Collage';
   var Basics = Elm.Basics(elm);
   var List = Elm.List(elm);
   var Either = Elm.Either(elm);
-  var Matrix2D = Elm.Matrix2D(elm);
+  var Transform2D = Elm.Transform2D(elm);
   var Native = Native || {};
   Native.Graphics = Native.Graphics || {};
   Native.Graphics.Collage = Elm.Native.Graphics.Collage(elm);
@@ -4264,7 +4353,7 @@ Elm.Graphics.Collage = function(elm){
   var FGroup = F2(function(a, b){
     return {ctor:"FGroup", _0:a, _1:b};});
   var group = function(fs){
-    return form(A2(FGroup, Matrix2D.identity, fs));};
+    return form(A2(FGroup, Transform2D.identity, fs));};
   var groupTransform = F2(function(matrix, fs){
     return form(A2(FGroup, matrix, fs));});
   var FElement = function(a){
@@ -4695,7 +4784,6 @@ Elm.Graphics.Input = function(elm){
   var List = Elm.List(elm);
   var Graphics = Graphics || {};
   Graphics.Element = Elm.Graphics.Element(elm);
-  var Color = Elm.Color(elm);
   var Maybe = Elm.Maybe(elm);
   var JavaScript = Elm.JavaScript(elm);
   var _op = {};
@@ -5068,7 +5156,7 @@ ElmRuntime.Render.Collage = function() {
 'use strict';
 
 var Render = ElmRuntime.use(ElmRuntime.Render.Element);
-var Matrix = Elm.Matrix2D({});
+var Transform = Elm.Transform2D({});
 var Utils = ElmRuntime.use(ElmRuntime.Render.Utils);
 var newElement = Utils.newElement,
     extract = Utils.extract, fromList = Utils.fromList,
@@ -5223,23 +5311,23 @@ function renderForm(redo, ctx, form) {
 
 function formToMatrix(form) {
    var scale = form.scale;
-   var matrix = A6( Matrix.matrix, scale, 0, 0, scale, form.x, form.y );
+   var matrix = A6( Transform.matrix, scale, 0, 0, scale, form.x, form.y );
 
    var theta = form.theta
    if (theta !== 0)
-       matrix = A2( Matrix.multiply, matrix, Matrix.rotation(theta) );
+       matrix = A2( Transform.multiply, matrix, Transform.rotation(theta) );
 
    return matrix;
 }
 
 function makeTransform(w, h, form, matrices) {
     var props = form.form._0.props;
-    var m = A6( Matrix.matrix, 1, 0, 0, 1,
+    var m = A6( Transform.matrix, 1, 0, 0, 1,
                 (w - props.width)/2,
                 (h - props.height)/2 );
     var len = matrices.length;
-    for (var i = 0; i < len; ++i) { m = A2( Matrix.multiply, m, matrices[i] ); }
-    m = A2( Matrix.multiply, m, formToMatrix(form) );
+    for (var i = 0; i < len; ++i) { m = A2( Transform.multiply, m, matrices[i] ); }
+    m = A2( Transform.multiply, m, formToMatrix(form) );
 
     return 'matrix(' +   m[0]  + ',' +   m[3]  + ',' +
                        (-m[1]) + ',' + (-m[4]) + ',' +
@@ -5285,7 +5373,7 @@ function stepper(forms) {
         var f = out.form;
         if (f.ctor === 'FGroup') {
             ps.unshift(stepperHelp(f._1));
-            var m = A2(Matrix.multiply, f._0, formToMatrix(out));
+            var m = A2(Transform.multiply, f._0, formToMatrix(out));
             ctx.save();
             ctx.transform(m[0], m[3], m[1], m[4], m[2], m[5]);
             matrices.push(m);
@@ -5680,9 +5768,9 @@ function updateProps(node, curr, next) {
         e.style.opacity = props.opacity;
     }
     var nextColor = (props.color.ctor === 'Just' ?
-                     extract(props.color._0) : 'transparent');
+                     extract(props.color._0) : '');
     if (e.style.backgroundColor !== nextColor) {
-        e.style.backgroundColor = nextColor;
+        e.style.backgroundColor = (nextColor === '' ? 'transparent' : nextColor);
     }
     if (props.tag !== currP.tag) { e.id = props.tag; }
     if (props.href !== currP.href) {
@@ -5721,8 +5809,8 @@ function addTo(container, elem) {
 }
 
 function extract(c) {
-    if (c._3 === 1) { return 'rgb(' + c._0 + ',' + c._1 + ',' + c._2 + ')'; }
-    return 'rgba(' + c._0 + ',' + c._1 + ',' + c._2 + ',' + c._3 + ')';
+    if (c._3 === 1) { return 'rgb(' + c._0 + ', ' + c._1 + ', ' + c._2 + ')'; }
+    return 'rgba(' + c._0 + ', ' + c._1 + ', ' + c._2 + ', ' + c._3 + ')';
 }
 
 function addTransform(style, trans) {

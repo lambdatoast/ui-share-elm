@@ -67,7 +67,6 @@ h1 small {
 #editor textarea,
 #editor .CodeMirror {
   font-size: 13px;
-  width: 98%;
 }
 #preview,
 #preview iframe,
@@ -77,6 +76,7 @@ h1 small {
 }
 #preview iframe {
   border: 1px solid #dfdfdf;
+  width: 100%;
 }
 .actions a {
   margin-top: 5px;
@@ -86,6 +86,10 @@ h1 small {
 }
 #save {
   display: none;
+}
+.version-select {
+  margin-top: 0.7em;
+  text-align: right;
 }
 .secondary {
   border-top: 1px solid #efefef;

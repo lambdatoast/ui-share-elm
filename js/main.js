@@ -391,193 +391,273 @@ process.binding = function (name) {
 
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/editor.js",function(require,module,exports,__dirname,__filename,process,global){var _        = require('underscore')
-var curry    = require('curry')
-var http     = require('iris').http
-var ui       = require('./ui.state')
-var history  = ui.history
-var on       = require('./ui.event').on
-var core     = require('./core')
-var mval     = core.mval
-var fval     = core.fval
-var rval     = core.rval
-var rstate   = core.rstate
-var sequence = core.sequence
+require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/editor.js",function(require,module,exports,__dirname,__filename,process,global){var SourceSignal = require('./ui.state').SourceSignal
+var show         = require('./ui.update').show
+var history      = require('./history')
+var compiler     = require('./compiler')
 
-/* MODEL */
-
-// String -> String
-function editorPath(id) {
-  return '/sprout/' + id
-}
-
-// String -> String
-function fullviewPath(id) {
-  return editorPath(id) + '/view'
-}
-
-// {getValue, setValue} -> {Source}
-function sourceAPI(io) {
-  return { 
-    asText: function () { return io.getValue() },
-    update: function(v) { io.setValue(v) } 
-  }
-}
-
-// AppState -> MVal[Promise,AppState]
-function compile(state) {
-  return mval(http.post('/sprout', {body: state}), state);
-}
-
-// MVal[_,AppState] -> Boolean
-function sourceIsEmpty(app) {
-  return rstate(app).sourcecode.replace(/\s+/g, '') == ""
-}
-
-// String -> AppState -> MVal[Promise,AppState]
-var compileAs = curry(function (category, state) {
-  return fval(compile(_.extend(state, {category: category})));
-})
-
-// MVal[_,AppState] -> {StorableHistory}
-function rhistory(val) {
-  var state = rstate(val)
-  // (can't just store AppState in DOM history because an object with functions breaks it)
-  return {
-    sourcecode: state.source.asText(), 
-    preview:    state.ui.preview.asHTML(), 
-    category:   state.category
-  }
-}
-
-/* UPDATE */
-
-// String -> String -> MVal[AppSignal] -> MVal[AppSignal]
-var addCompilationHandler = curry(function (selector, category, app) {
-  var newApp = mval(rval(app), _.extend(rstate(app), {category: category}))
-  on('click', selector, function () { 
-    compilationSequence(newApp)(newApp) 
-  })
-  return newApp
-})
-
-// MVal[AppSignal,AppState] -> AppState
-function nextAppState(app) {
-  return rval(app)()
-}
-
-// MVal[AppSignal,AppState] -> Computation[MVal[AppSignal,AppState]]
-function compilationSequence(app) {
-  return sequence(
-    nextAppState,
-    compileAs(rstate(app).category),
-    updatePreview,
-    updateUIControls,
-    updateHistoryFromCompilation
-  )
-}
-
-// MVal[_,AppState] -> DOMEvent -> ()
-var updateUIFromHistory = curry(function (val, event) {
-  if (event.state) {
-    rstate(val).source.update(event.state.sourcecode)
-    rstate(val).ui.preview.update(document.location.pathname + '/view')
-  }
-})
-
-// MVal[_,AppState] -> ()
-function initAutoUpdateSaveButton(app) {
-  var state = rstate(app)
-  var lastCheckedSource = state.source.asText()
+// SourceIO -> ()
+function initSaveButton(source) {
+  var lastCheckedSource = source.read()
   setInterval(function () {
-    var currentSource = state.source.asText()
+    var currentSource = source.read()
     if (currentSource != lastCheckedSource) {
-      state.ui.show('#save')
+      show('#save')
       lastCheckedSource = currentSource
     }
   }, 700)
 }
 
-/* DISPLAY */
+function initEditor() {
+  var source = SourceSignal()
 
-// {Source} -> {UI}
-function mkStateSignal(sourceState, ui) {
-  return function () {
-    return { 
-      ui: ui,
-      source: sourceState,
-      sourcecode: sourceState.asText(), 
-      preview: ui.preview.asHTML(), 
-      category: ui.query('#editor input[name=category]')[0].value
-    }
-  }
+  compiler.init(source)
+
+  initSaveButton(source)
+
+  history.init(source)
 }
-
-// MVal[Promise,AppState] -> MVal[Promise,AppState]
-function updatePreview(val) {
-  rval(val)
-    .ok(function (id) {
-      rstate(val).ui.preview.update(fullviewPath(id))
-    })
-    .failed(function(data) {
-      rstate(val).ui.preview.showError()
-    })
-  return val
-}
-
-// MVal[Promise,AppState] -> MVal[Promise,AppState]
-function updateUIControls(val) {
-  rval(val)
-    .ok(function (id) {
-      if (rstate(val).category == "saved") {
-        rstate(val).ui.hide("#save")
-      }
-    })
-  return val
-}
-
-// MVal[Promise,AppState] -> MVal[Promise,AppState]
-function updateHistoryFromCompilation(val) {
-  rval(val)
-    .ok(function (id) {
-      rstate(val).ui.history.update(editorPath(id), rhistory(val))
-    })
-  return val
-}
-
-// (MVal[_,AppState] -> ()) -> MVal[_,AppState]
-var addHistoryHandler = curry(function (fn, app) {
-  window.onpopstate = fn(app)
-  return app
-})
 
 module.exports = {
-  init: function () {
+  init: initEditor
+}
 
-    // Initial State
+});
 
-    var appSignal = mkStateSignal(
-      sourceAPI(CodeMirror.fromTextArea(ui.query("#sourcecode")[0], {theme: "solarized"})),
-      ui
-    )
-    var initialState = appSignal()
-    var app = mval(appSignal, initialState)
+require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/ui.state.js",function(require,module,exports,__dirname,__filename,process,global){var query = require('./ui.query')
 
-    // Boot
+// String
+function category() {
+  return query('#editor input[name=category]')[0].value
+}
 
-    history.update(document.location, rhistory(app))
-    if (!sourceIsEmpty(app)) compilationSequence(app)(app)
+// String
+function previewAsHTML() {
+  return query('#preview')[0].innerHTML
+}
 
-    // Event Handlers and Auto Update
+// String
+function inputValueByName(name) {
+  return query('input[name=' + name + ']')[0].value
+}
 
-    sequence(
-      addHistoryHandler(updateUIFromHistory),
-      addCompilationHandler("#compile", "draft"),
-      addCompilationHandler("#save", "saved"),
-      initAutoUpdateSaveButton
-    )(app)
+// String
+function version() {
+  return query('#version')[0].value
+}
 
+// DOMElement
+function rawTextArea() {
+  return query("#sourcecode")[0]
+}
+
+// SourceIO = { read:() -> String, write:String -> () }
+// SourceIO
+function SourceSignal() {
+  var io = CodeMirror.fromTextArea(rawTextArea(), {theme: "solarized"})
+  return { 
+    read: function () { return io.getValue() },
+    write: function(v) { io.setValue(v) } 
   }
+}
+
+module.exports = {
+  category: category,
+  preview: {
+    asHTML: previewAsHTML
+  },
+  rawTextArea: rawTextArea,
+  query: query,
+  version: version,
+  inputValueByName: inputValueByName,
+  SourceSignal: SourceSignal
+}
+
+
+});
+
+require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/ui.query.js",function(require,module,exports,__dirname,__filename,process,global){function query(selector) {
+  return document.querySelectorAll(selector)
+}
+
+module.exports = query
+
+
+
+});
+
+require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/ui.update.js",function(require,module,exports,__dirname,__filename,process,global){var query         = require('./ui.query')
+var updateHistory = require('./history.update')
+var Record        = require('./history.model').Record
+var addWord       = require('./core').addWord
+var http          = require('iris').http
+var M             = require('./core').M
+var EditorSignal  = require('./editor.state').EditorSignal
+var Response      = require('./http.model').Response
+
+function css(el, k, v) {
+  el.style[k] = v
+}
+
+function show(selector, style) {
+  css(query(selector)[0], 'display', style || 'inline-block')
+}
+
+function hide(selector, style) {
+  css(query(selector)[0], 'display', style || 'none')
+}
+
+function updateLocationHref(href) {
+  window.location.href = href
+}
+
+function updatePreviewWithError() {
+  hide('.actions .view')
+  query('#preview')[0].innerHTML = 'There was a server error, try again in a bit.'
+}
+
+function updatePreviewWithResult(fullViewURL) {
+  query('#preview')[0].innerHTML = '<iframe src="' + fullViewURL + '"></iframe>'
+  query('.actions .view')[0].href = fullViewURL
+  show('.actions .view')
+}
+
+// UIButtons -> ()
+function updateButtons(s) {
+  Object.keys(s).forEach(function (btnID) {
+    if (s[btnID] === true) {
+      show("#" + btnID)
+    } else {
+      hide("#" + btnID)
+    }
+  })
+}
+
+// EditorState -> ()
+function updateUI(s) {
+  //console.log(s)
+  updatePreviewWithResult(s.preview)
+  updateButtons(s.ui.buttonState)
+  updateHistory(s.route, Record(s.route, s.category, s.sourcecode))
+}
+
+// Take a SourceIO and a function. 
+// Apply the function to the SourceIO.
+// Execute any requests resulting fmor applying the function.
+// Update the UI with the resulting state after handling the responses.
+//
+// SourceIO -> (Editor -> Editor) -> ()
+function step(source, f) {
+  var newState = f(EditorSignal(source))
+
+  if (newState.requests.length > 0) {
+    newState.requests.forEach(function (r) {
+      http[r.method](r.url, { body: r.data }).ok(function (data) {
+        updateUI(r.responseHandler(M(newState, Response(data))))
+      }).failed(function () {
+        updatePreviewWithError()
+      })
+    })
+  }
+}
+
+module.exports = {
+  css: css,
+  show: show,
+  hide: hide,
+  locationHref: updateLocationHref,
+  activateSpin: function (el) {
+    el.className = addWord('icon-spin', el.className)
+  },
+  preview: {
+    withError: updatePreviewWithError,
+    withResult: updatePreviewWithResult
+  },
+  buttons: updateButtons,
+  all: updateUI,
+  step: step
+}
+
+});
+
+require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/history.update.js",function(require,module,exports,__dirname,__filename,process,global){// String -> HistoryRecord
+function updateHistory(url, r) {
+  window.history.pushState(r, "", url)
+}
+
+module.exports = updateHistory
+
+
+});
+
+require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/history.model.js",function(require,module,exports,__dirname,__filename,process,global){// String -> String -> String -> HistoryRecord
+function HistoryRecord(route, category, sourcecode) {
+  // (can't just store EditorState in DOM history because an object with functions breaks it)
+  return {
+    route:       route,
+    category:    category,
+    sourcecode:  sourcecode
+  }
+}
+
+module.exports = {
+  Record: HistoryRecord
+}
+
+});
+
+require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/core.js",function(require,module,exports,__dirname,__filename,process,global){var _              = require('underscore')
+
+// String helpers
+
+function hasWord(w, s) {
+  var r = new RegExp('\\b' + w + '\\b')
+  return r.test(s)
+}
+
+function addWord(w, s) {
+  if (hasWord(s, w)) {
+    return w
+  }
+  return s + " " + w;
+}
+
+function removeWord(w, s) {
+  var r = new RegExp('\\b' + w + '\\b')
+  return s.replace(r, '')
+}
+
+// Generic State Monad
+
+// M a = (State, a)
+function M(s, a) {
+  return [s, a]
+}
+// a -> M a
+M.unit = function (a) {
+  return M(undefined, a)
+}
+// Ma -> (a -> M b) -> Mb
+M.chain = function (m, k) {
+  var x = m[0], a = m[1]
+  var mb = k(a), y = mb[0], b = mb[1]
+  return M(_.extend(x,y), b)
+}
+// State -> M ()
+M.state = function (s) {
+  return M(s, undefined)
+}
+// M a -> M a -> Boolean
+M.eq = function (ma, mb) {
+  return ma[0] === mb[0] && ma[1] === mb[1]
+}
+
+module.exports = {
+  hasWord:    hasWord,
+  addWord:    addWord,
+  removeWord: removeWord,
+
+  M:          M
 }
 
 });
@@ -1814,76 +1894,6 @@ require.define("/node_modules/underscore/underscore.js",function(require,module,
 
 });
 
-require.define("/node_modules/curry/package.json",function(require,module,exports,__dirname,__filename,process,global){module.exports = {"main":"./curry"}
-});
-
-require.define("/node_modules/curry/curry.js",function(require,module,exports,__dirname,__filename,process,global){var slice = Array.prototype.slice;
-var toArray = function(a){ return slice.call(a) }
-
-// fn, [value] -> fn
-//-- create a curried function, incorporating any number of
-//-- pre-existing arguments (e.g. if you're further currying a function).
-var createFn = function(fn, args){
-    var arity = fn.length - args.length;
-
-    if ( arity === 0 )  return function (){ return processInvocation(fn, argify(args, arguments)) };
-    if ( arity === 1 )  return function (a){ return processInvocation(fn, argify(args, arguments)) };
-    if ( arity === 2 )  return function (a,b){ return processInvocation(fn, argify(args, arguments)) };
-    if ( arity === 3 )  return function (a,b,c){ return processInvocation(fn, argify(args, arguments)) };
-    if ( arity === 4 )  return function (a,b,c,d){ return processInvocation(fn, argify(args, arguments)) };
-    if ( arity === 5 )  return function (a,b,c,d,e){ return processInvocation(fn, argify(args, arguments)) };
-    if ( arity === 6 )  return function (a,b,c,d,e,f){ return processInvocation(fn, argify(args, arguments)) };
-    if ( arity === 7 )  return function (a,b,c,d,e,f,g){ return processInvocation(fn, argify(args, arguments)) };
-    if ( arity === 8 )  return function (a,b,c,d,e,f,g,h){ return processInvocation(fn, argify(args, arguments)) };
-    if ( arity === 9 )  return function (a,b,c,d,e,f,g,h,i){ return processInvocation(fn, argify(args, arguments)) };
-    if ( arity === 10 ) return function (a,b,c,d,e,f,g,h,i,j){ return processInvocation(fn, argify(args, arguments)) };
-    return createEvalFn(fn, args, arity);
-}
-
-// [value], arguments -> [value]
-//-- concat new arguments onto old arguments array
-var argify = function(args1, args2){
-    return args1.concat(toArray(args2));
-}
-
-// fn, [value], int -> fn
-//-- create a function of the correct arity by the use of eval,
-//-- so that curry can handle functions of any arity
-var createEvalFn = function(fn, args, arity){
-    var argList = makeArgList(arity);
-
-    //-- hack for IE's faulty eval parsing -- http://stackoverflow.com/a/6807726
-    var fnStr = 'false||' +
-                'function curriedFn(' + argList + '){ return processInvocation(fn, argify(args, arguments)); }';
-    return eval(fnStr);
-}
-
-var makeArgList = function(len){
-    var a = [];
-    for ( var i = 0; i < len; i += 1 ) a.push('a' + i.toString());
-    return a.join(',');
-}
-
-// fn, [value] -> value
-//-- handle a function being invoked.
-//-- if the arg list is long enough, the function will be called
-//-- otherwise, a new curried version is created.
-var processInvocation = function(fn, args){
-    if ( args.length > fn.length ) return fn.apply(null, args.slice(0, fn.length));
-    if ( args.length === fn.length ) return fn.apply(null, args);
-    return createFn(fn, args);
-}
-
-// fn -> fn
-//-- curries a function! <3
-var curry = function(fn){
-    return createFn(fn, []);
-};
-
-module.exports = curry;
-
-});
-
 require.define("/node_modules/iris/package.json",function(require,module,exports,__dirname,__filename,process,global){module.exports = {"main":"./src/index.js"}
 });
 
@@ -3069,137 +3079,257 @@ module.exports = { PromiseP: PromiseP
                  , active:   active }
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/ui.state.js",function(require,module,exports,__dirname,__filename,process,global){var addWord = require('./core').addWord
+require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/editor.state.js",function(require,module,exports,__dirname,__filename,process,global){var state  = require('./ui.state')
+var Editor = require('./editor.model').Editor
 
-function query(selector) {
-  return document.querySelectorAll(selector)
-}
-
-function css(el, k, v) {
-  el.style[k] = v
-}
-
-function show(selector, style) {
-  css(query(selector)[0], 'display', style || 'inline-block')
-}
-
-function hide(selector, style) {
-  css(query(selector)[0], 'display', style || 'none')
-}
-
-function updateLocationHref(href) {
-  window.location.href = href
-}
-
-function updateHistory(url, historyRecord) {
-  window.history.pushState(historyRecord, "", url)
-}
-
-function updatePreviewForError() {
-  hide('.actions .view')
-  query('#preview')[0].innerHTML = 'There was a server error, try again in a bit.'
-}
-
-function updatePreview(fullViewURL) {
-  query('#preview')[0].innerHTML = '<iframe src="' + fullViewURL + '"></iframe>'
-  query('.actions .view')[0].href = fullViewURL
-  show('.actions .view')
-}
-
-function previewAsHTML() {
-  return query('#preview')[0].innerHTML
-}
-
-function inputValueByName(name) {
-  return query('input[name=' + name + ']')[0].value
+// SourceIO
+function EditorSignal(source) {
+  return Editor(
+    document.location.pathname,
+    state.category(),
+    source.read(), 
+    [],
+    "",
+    undefined,
+    state.version()
+  )
 }
 
 module.exports = {
-  history: {
-    update: updateHistory
-  },
-  preview: {
-    showError: updatePreviewForError,
-    update: updatePreview,
-    asHTML: previewAsHTML
-  },
-  css: css,
-  show: show,
-  hide: hide,
-  query: query,
-  updateLocationHref: updateLocationHref,
-  activateSpin: function (el) {
-    el.className = addWord('icon-spin', el.className)
-  },
-  inputValueByName: inputValueByName
+  EditorSignal: EditorSignal
 }
 
 
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/core.js",function(require,module,exports,__dirname,__filename,process,global){// String helpers
+require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/editor.model.js",function(require,module,exports,__dirname,__filename,process,global){var _         = require('underscore')
+var path      = require('./path.model')
+var UIButtons = require('./ui.model').UIButtons
 
-function hasWord(w, s) {
-  var r = new RegExp('\b' + w + '\b')
-  return r.test(s)
-}
-
-function addWord(w, s) {
-  if (hasWord(s, w)) {
-    return w
-  }
-  return s + " " + w;
-}
-
-function removeWord(w, s) {
-  var r = new RegExp('\b' + w + '\b')
-  return s.replace(r, '')
-}
-
-// General State Management
-
-function mval(value, state) {
-  return {value: value, state: state}
-}
-
-function fval(val) {
-  return mval(rval(val), rstate(val))
-}
-
-function rval(val) {
-  return val.value
-}
-
-function rstate(val) {
-  return val.state
-}
-
-function fmap(fn) { 
-  return function (val) {
-    return mval(fn(rval(val)), rstate(val))
+function Editor(route, category, sourcecode, requests, preview, uiState, version) {
+  return { 
+    route:      route,
+    category:   category,
+    sourcecode: sourcecode,
+    requests:   requests,
+    preview:    preview,
+    ui:         uiState || { buttonState: UIButtons(true, true, true) },
+    version:    version
   }
 }
 
-function sequence(/* action1, action2, ... */) {
-  var actions = [].slice.call(arguments)
-  return function (val) {
-    var result = actions.reduce(function (acc, fn) {
-      return fn(acc)
-    }, val)
-    return result
+// M[Editor,Response] -> Editor
+function EditorFromStoreResponse(mr) {
+  var s = mr[0], id = mr[1]
+  return _.extend(s, { 
+    route:   path.editor(id),
+    preview: path.fullView(id, s.version),
+    ui:      _.extend(s.ui, { buttonState: _.extend(s.ui.buttonState, { save: (s.category == "saved" ? false : true) }) })
+  })
+}
+
+module.exports = {
+  Editor:                  Editor,
+  EditorFromStoreResponse: EditorFromStoreResponse
+}
+
+});
+
+require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/path.model.js",function(require,module,exports,__dirname,__filename,process,global){// String -> String
+function editorPath(id) {
+  return '/sprout/' + id
+}
+
+// String -> String
+function fullviewPath(id, version) {
+  return editorPath(id) + '/' + version + '/view'
+}
+
+module.exports = {
+  editor: editorPath,
+  fullView: fullviewPath
+}
+
+});
+
+require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/ui.model.js",function(require,module,exports,__dirname,__filename,process,global){// UIElement = { selector:String }
+
+// String -> UIElement
+function UIElement(selector) {
+  return { selector: selector }
+}
+
+// { compile:DisplayState, save:DisplayState, view:DisplayState }
+function UIButtons(compile, save, view) {
+  return {
+    compile: compile,
+    save:    save,
+    view:    view
+  }
+}
+UIButtons.Show = "show"
+UIButtons.Hide = "hide"
+
+module.exports = {
+  UIElement: UIElement,
+  UIButtons: UIButtons
+}
+
+});
+
+require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/http.model.js",function(require,module,exports,__dirname,__filename,process,global){// ResponseHandler = (M[A,Response] -> B)
+// Request = { method:String, url:String, data:{}, responseHandler:ResponseHandler }
+// String -> String -> {} -> ResponseHandler -> Request
+function Request(method, url, data, responseHandler) {
+  return { method: method, url: url, data: data, responseHandler: responseHandler || (function () { }) }
+}
+Request.POST = "post"
+Request.GET = "get"
+
+// {} -> Response
+function Response(data) {
+  return data
+}
+
+// StoreRequest = { category:String, sourcecode:String }
+// String -> String -> StoreRequest
+function StoreRequest(category, sourcecode ) {
+  return {
+    category: category,
+    sourcecode: sourcecode
   }
 }
 
 module.exports = {
-  hasWord:    hasWord,
-  addWord:    addWord,
-  removeWord: removeWord,
+  Response: Response,
+  Request: Request,
+  StoreRequest: StoreRequest
+}
 
-  mval: mval,
-  fval: fval,
-  rval: rval,
-  rstate: rstate,
-  sequence: sequence
+});
+
+require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/history.js",function(require,module,exports,__dirname,__filename,process,global){var curry  = require('curry')
+var update = require('./ui.update')
+var path   = require('./path.model')
+
+// SourceIO -> PopStateEvent -> ()
+var handleHistoryPopState = curry(function (source, e) {
+  if (!e.state) {
+    // There's always an initial `popstate` event which comes with null data, during page load, at least on Chrome.
+    return
+  }
+  var id = e.state.route.split("/").filter(function (e) { return e != "" })[1]
+  update.preview.withResult(path.fullView(id, "stable"))
+  source.write(e.state.sourcecode)
+})
+
+// SourceIO -> ()
+function initHistory(source) {
+  window.onpopstate = handleHistoryPopState(source)
+}
+
+module.exports = {
+  init: initHistory
+}
+
+});
+
+require.define("/node_modules/curry/package.json",function(require,module,exports,__dirname,__filename,process,global){module.exports = {"main":"./curry"}
+});
+
+require.define("/node_modules/curry/curry.js",function(require,module,exports,__dirname,__filename,process,global){var slice = Array.prototype.slice;
+var toArray = function(a){ return slice.call(a) }
+
+// fn, [value] -> fn
+//-- create a curried function, incorporating any number of
+//-- pre-existing arguments (e.g. if you're further currying a function).
+var createFn = function(fn, args){
+    var arity = fn.length - args.length;
+
+    if ( arity === 0 )  return function (){ return processInvocation(fn, argify(args, arguments)) };
+    if ( arity === 1 )  return function (a){ return processInvocation(fn, argify(args, arguments)) };
+    if ( arity === 2 )  return function (a,b){ return processInvocation(fn, argify(args, arguments)) };
+    if ( arity === 3 )  return function (a,b,c){ return processInvocation(fn, argify(args, arguments)) };
+    if ( arity === 4 )  return function (a,b,c,d){ return processInvocation(fn, argify(args, arguments)) };
+    if ( arity === 5 )  return function (a,b,c,d,e){ return processInvocation(fn, argify(args, arguments)) };
+    if ( arity === 6 )  return function (a,b,c,d,e,f){ return processInvocation(fn, argify(args, arguments)) };
+    if ( arity === 7 )  return function (a,b,c,d,e,f,g){ return processInvocation(fn, argify(args, arguments)) };
+    if ( arity === 8 )  return function (a,b,c,d,e,f,g,h){ return processInvocation(fn, argify(args, arguments)) };
+    if ( arity === 9 )  return function (a,b,c,d,e,f,g,h,i){ return processInvocation(fn, argify(args, arguments)) };
+    if ( arity === 10 ) return function (a,b,c,d,e,f,g,h,i,j){ return processInvocation(fn, argify(args, arguments)) };
+    return createEvalFn(fn, args, arity);
+}
+
+// [value], arguments -> [value]
+//-- concat new arguments onto old arguments array
+var argify = function(args1, args2){
+    return args1.concat(toArray(args2));
+}
+
+// fn, [value], int -> fn
+//-- create a function of the correct arity by the use of eval,
+//-- so that curry can handle functions of any arity
+var createEvalFn = function(fn, args, arity){
+    var argList = makeArgList(arity);
+
+    //-- hack for IE's faulty eval parsing -- http://stackoverflow.com/a/6807726
+    var fnStr = 'false||' +
+                'function curriedFn(' + argList + '){ return processInvocation(fn, argify(args, arguments)); }';
+    return eval(fnStr);
+}
+
+var makeArgList = function(len){
+    var a = [];
+    for ( var i = 0; i < len; i += 1 ) a.push('a' + i.toString());
+    return a.join(',');
+}
+
+// fn, [value] -> value
+//-- handle a function being invoked.
+//-- if the arg list is long enough, the function will be called
+//-- otherwise, a new curried version is created.
+var processInvocation = function(fn, args){
+    if ( args.length > fn.length ) return fn.apply(null, args.slice(0, fn.length));
+    if ( args.length === fn.length ) return fn.apply(null, args);
+    return createFn(fn, args);
+}
+
+// fn -> fn
+//-- curries a function! <3
+var curry = function(fn){
+    return createFn(fn, []);
+};
+
+module.exports = curry;
+
+});
+
+require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/compiler.js",function(require,module,exports,__dirname,__filename,process,global){var UIElement      = require('./ui.model').UIElement
+var clickListener  = require('./ui.event').clickListener
+var changeListener = require('./ui.event').changeListener
+var step           = require('./ui.update').step
+var model          = require('./compiler.model')
+var compile        = model.compile
+var compileAs      = model.compileAs
+var sourceIsEmpty  = model.sourceIsEmpty
+
+// SourceIO -> ()
+function initCompiler(source) {
+  void [ 
+    clickListener(UIElement("#compile"), compile),
+    clickListener(UIElement("#save"), compileAs("saved")),
+    changeListener(UIElement("#version"), compile)
+  ].forEach(function (activateListener) {
+    activateListener(source, step)
+  })
+
+  if (!sourceIsEmpty(source.read())) {
+    step(source, compile)
+  }
+}
+
+module.exports = {
+  init: initCompiler
 }
 
 });
@@ -3214,8 +3344,25 @@ var on = curry(function (eventType, selector, handler) {
   });
 })
 
+// EventProcessor = Signal[A] -> (EditorState -> EditorState) -> ()
+// String -> UIElement -> (EditorState -> EditorState) -> (Stream[A] -> EventProcessor -> ())
+var listener = curry(function (eventType, UIElement, f) {
+  return function (signal, eventProcessor) {
+    on(eventType, UIElement.selector, function (e) { 
+      eventProcessor(signal, f)
+    })
+  }
+})
+
+var clickListener = listener("click")
+
+var changeListener = listener("change")
+
 module.exports = {
-  on: on
+  on: on,
+  listener: listener,
+  clickListener: clickListener,
+  changeListener: changeListener
 }
 
 });
@@ -3966,10 +4113,46 @@ require.define("/node_modules/bean/bean.js",function(require,module,exports,__di
 });
 });
 
-require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/gist.js",function(require,module,exports,__dirname,__filename,process,global){var curry    = require('curry')
-var http     = require('iris').http
-var ui_state = require('./ui.state')
-var on       = require('./ui.event').on
+require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/compiler.model.js",function(require,module,exports,__dirname,__filename,process,global){var _            = require('underscore')
+var curry        = require('curry')
+var Request      = require('./http.model').Request
+var StoreRequest = require('./http.model').StoreRequest
+var editorModel  = require('./editor.model')
+
+// String -> Boolean
+function sourceIsEmpty(str) {
+  return str.replace(/\s+/g, '') == ""
+}
+
+// Editor -> Editor
+function compile(s) {
+  if (sourceIsEmpty(s.sourcecode)) {
+    return s
+  } else {
+    return _.extend(s, { 
+      requests: s.requests.concat([Request(Request.POST, '/sprout', StoreRequest(s.category, s.sourcecode), editorModel.EditorFromStoreResponse)])
+    })
+  }
+}
+
+// String -> Editor -> Editor
+var compileAs = curry(function (category, s) {
+  return compile(_.extend(s, {category: category}));
+})
+
+module.exports = {
+  compile:       compile,
+  compileAs:     compileAs,
+  sourceIsEmpty: sourceIsEmpty
+}
+
+});
+
+require.define("/projects/repos/share-elm/src/main/resources/theme/js/src/gist.js",function(require,module,exports,__dirname,__filename,process,global){var curry         = require('curry')
+var http          = require('iris').http
+var update        = require('./ui.update')
+var state         = require('./ui.state')
+var on            = require('./ui.event').on
 var onCompileGist = on('click', '#compile-gist')
 var onImportGist  = on('click', '#import-gist')
 
@@ -3977,30 +4160,30 @@ function isValidGistID(rawStr) {
   return rawStr.match(/^[a-fA-F0-9]+$/) != null
 }
 
-var gistAction = curry(function (ui, fn) {
+var gistAction = function (fn) {
   return function () {
-    var gistID = ui.inputValueByName('gist_url')
+    var gistID = state.inputValueByName('gist_url')
     if (isValidGistID(gistID)) {
-      return fn(ui, gistID)
+      return fn(gistID)
     }
   }
-})(ui_state)
+}
 
-var viewGist = gistAction(function (ui, gistID) {
-  ui.updateLocationHref('/gists/' + gistID)
+var viewGist = gistAction(function (gistID) {
+  update.locationHref('/gists/' + gistID)
 })
 
-var importGist = gistAction(function (ui, gistID) {
+var importGist = gistAction(function (gistID) {
   return http.get('/gists/' + gistID + '/import')
 })
 
-var spinImportIcon = gistAction(function (ui, gistID) {
-  ui.activateSpin(ui.query('.secondary .icon-github-alt')[0])
+var spinImportIcon = gistAction(function (gistID) {
+  update.activateSpin(state.query('.secondary .icon-github-alt')[0])
 })
 
-var loadGistImport = curry(function (ui, id) {
-  ui.updateLocationHref('/sprout/' + id)
-})(ui_state)
+var loadGistImport = function (id) {
+  update.locationHref('/sprout/' + id)
+}
 
 module.exports = {
 

@@ -1,7 +1,9 @@
+var _              = require('underscore')
+
 // String helpers
 
 function hasWord(w, s) {
-  var r = new RegExp('\b' + w + '\b')
+  var r = new RegExp('\\b' + w + '\\b')
   return r.test(s)
 }
 
@@ -13,42 +15,33 @@ function addWord(w, s) {
 }
 
 function removeWord(w, s) {
-  var r = new RegExp('\b' + w + '\b')
+  var r = new RegExp('\\b' + w + '\\b')
   return s.replace(r, '')
 }
 
-// General State Management
+// Generic State Monad
 
-function mval(value, state) {
-  return {value: value, state: state}
+// M a = (State, a)
+function M(s, a) {
+  return [s, a]
 }
-
-function fval(val) {
-  return mval(rval(val), rstate(val))
+// a -> M a
+M.unit = function (a) {
+  return M(undefined, a)
 }
-
-function rval(val) {
-  return val.value
+// Ma -> (a -> M b) -> Mb
+M.chain = function (m, k) {
+  var x = m[0], a = m[1]
+  var mb = k(a), y = mb[0], b = mb[1]
+  return M(_.extend(x,y), b)
 }
-
-function rstate(val) {
-  return val.state
+// State -> M ()
+M.state = function (s) {
+  return M(s, undefined)
 }
-
-function fmap(fn) { 
-  return function (val) {
-    return mval(fn(rval(val)), rstate(val))
-  }
-}
-
-function sequence(/* action1, action2, ... */) {
-  var actions = [].slice.call(arguments)
-  return function (val) {
-    var result = actions.reduce(function (acc, fn) {
-      return fn(acc)
-    }, val)
-    return result
-  }
+// M a -> M a -> Boolean
+M.eq = function (ma, mb) {
+  return ma[0] === mb[0] && ma[1] === mb[1]
 }
 
 module.exports = {
@@ -56,9 +49,5 @@ module.exports = {
   addWord:    addWord,
   removeWord: removeWord,
 
-  mval: mval,
-  fval: fval,
-  rval: rval,
-  rstate: rstate,
-  sequence: sequence
+  M:          M
 }

@@ -1,65 +1,49 @@
-var addWord = require('./core').addWord
+var query = require('./ui.query')
 
-function query(selector) {
-  return document.querySelectorAll(selector)
+// String
+function category() {
+  return query('#editor input[name=category]')[0].value
 }
 
-function css(el, k, v) {
-  el.style[k] = v
-}
-
-function show(selector, style) {
-  css(query(selector)[0], 'display', style || 'inline-block')
-}
-
-function hide(selector, style) {
-  css(query(selector)[0], 'display', style || 'none')
-}
-
-function updateLocationHref(href) {
-  window.location.href = href
-}
-
-function updateHistory(url, historyRecord) {
-  window.history.pushState(historyRecord, "", url)
-}
-
-function updatePreviewForError() {
-  hide('.actions .view')
-  query('#preview')[0].innerHTML = 'There was a server error, try again in a bit.'
-}
-
-function updatePreview(fullViewURL) {
-  query('#preview')[0].innerHTML = '<iframe src="' + fullViewURL + '"></iframe>'
-  query('.actions .view')[0].href = fullViewURL
-  show('.actions .view')
-}
-
+// String
 function previewAsHTML() {
   return query('#preview')[0].innerHTML
 }
 
+// String
 function inputValueByName(name) {
   return query('input[name=' + name + ']')[0].value
 }
 
+// String
+function version() {
+  return query('#version')[0].value
+}
+
+// DOMElement
+function rawTextArea() {
+  return query("#sourcecode")[0]
+}
+
+// SourceIO = { read:() -> String, write:String -> () }
+// SourceIO
+function SourceSignal() {
+  var io = CodeMirror.fromTextArea(rawTextArea(), {theme: "solarized"})
+  return { 
+    read: function () { return io.getValue() },
+    write: function(v) { io.setValue(v) } 
+  }
+}
+
 module.exports = {
-  history: {
-    update: updateHistory
-  },
+  category: category,
   preview: {
-    showError: updatePreviewForError,
-    update: updatePreview,
     asHTML: previewAsHTML
   },
-  css: css,
-  show: show,
-  hide: hide,
+  rawTextArea: rawTextArea,
   query: query,
-  updateLocationHref: updateLocationHref,
-  activateSpin: function (el) {
-    el.className = addWord('icon-spin', el.className)
-  },
-  inputValueByName: inputValueByName
+  version: version,
+  inputValueByName: inputValueByName,
+  SourceSignal: SourceSignal
 }
 
