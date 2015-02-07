@@ -1,4 +1,6 @@
-# UI for share-elm.com
+# Old UI for share-elm.com
+
+NOTE: This is no longer the same codebase as share-elm.com's frontend. The actual codebase (front end and back end) will be open sourced at some point in 2015.
 
 Requires [node](http://nodejs.org/) and [browserify](https://github.com/substack/node-browserify) for building and testing the source files.
 
